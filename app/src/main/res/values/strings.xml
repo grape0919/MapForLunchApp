@@ -1,3 +1,5 @@
 <resources>
-    <string name="app_name">식사의 신</string>
+    <string name="app_name">식사의\n신</string>
+    <string name="app_name_first">식사의</string>
+    <string name="app_name_second">신</string>
 </resources>
