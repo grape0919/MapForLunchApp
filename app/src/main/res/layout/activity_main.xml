@@ -7,15 +7,8 @@
         android:layout_height="match_parent"
         tools:context=".MainActivity"
         android:id="@+id/layout_main">
-<!--    <fragment-->
-<!--            android:id="@+id/map"-->
-<!--            class="info.hkdevstudio.gom.map.GomMapView"-->
-<!--            android:layout_width="match_parent"-->
-<!--            android:layout_height="0dp"-->
-<!--            android:layout_weight="5"-->
-<!--            app:layout_constraintBottom_toTopOf="parent"-->
-<!--            app:layout_constraintLeft_toLeftOf="parent"-->
-<!--            app:layout_constraintRight_toRightOf="parent"-->
-<!--            app:layout_constraintTop_toTopOf="parent"/>-->
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+              android:text="MAIN" tools:ignore="MissingConstraints"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
