@@ -32,21 +32,25 @@ public class RestApiHendler {
                     conn.setRequestProperty("Accept","*/*");
                     conn.setRequestMethod("GET");
                     Log.d("REST API", "response Cosde : " + conn.getResponseCode());
-                    InputStream is = conn.getInputStream();
+                    if(conn.getResponseCode() == 200) {
+                        InputStream is = conn.getInputStream();
 
-                    // Get the stream
-                    StringBuilder builder = new StringBuilder();
-                    BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        builder.append(line);
+                        // Get the stream
+                        StringBuilder builder = new StringBuilder();
+                        BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            builder.append(line);
+                        }
+
+                        // Set the result
+                        r = builder.toString();
+
+                        Log.d("REST_API", "GET method succeed: " + r);
+                        result[0] = r;
+                    }else{
+                        throw new Exception();
                     }
-
-                    // Set the result
-                    r = builder.toString();
-
-                    Log.d("REST_API", "GET method succeed: " + r);
-                    result[0] = r;
                 }
                 catch (Exception e) {
                     // Error calling the rest api
