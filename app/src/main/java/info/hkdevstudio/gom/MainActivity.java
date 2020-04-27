@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -26,6 +27,8 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.snackbar.Snackbar;
 import info.hkdevstudio.gom.gps.GpsTracker;
+import info.hkdevstudio.gom.handler.RequestPram;
+import info.hkdevstudio.gom.handler.RestApiHendler;
 import net.daum.mf.map.api.MapPOIItem;
 import net.daum.mf.map.api.MapPoint;
 import net.daum.mf.map.api.MapView;
@@ -67,6 +70,13 @@ public class MainActivity extends Activity {
 
         mapView.setMapCenterPointAndZoomLevel(MapPoint.mapPointWithGeoCoord(latitude, longitude), 1, true);
 
+        RequestPram msg = new RequestPram();
+        msg.setY(latitude);
+        msg.setX(longitude);
+        msg.setQuery("맛집");
+        msg.setCategory_group_code("FD6");
+        msg.setRedius(5000);
+        String result = RestApiHendler.getApi(msg.toString());
 
 
         MapPOIItem marker = new MapPOIItem();
