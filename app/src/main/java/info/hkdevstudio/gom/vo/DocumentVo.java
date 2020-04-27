@@ -1,7 +1,5 @@
 package info.hkdevstudio.gom.vo;
 
-import java.util.List;
-
 /**
  * {
  *   "meta": {

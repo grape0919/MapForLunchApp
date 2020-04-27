@@ -1,8 +1,6 @@
 package info.hkdevstudio.gom.handler;
 
-import android.os.AsyncTask;
 import android.util.Log;
-import info.hkdevstudio.gom.R;
 import info.hkdevstudio.gom.vo.DocumentVo;
 import org.json.JSONArray;
 import org.json.JSONObject;
