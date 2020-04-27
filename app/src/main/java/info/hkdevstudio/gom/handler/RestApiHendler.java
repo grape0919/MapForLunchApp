@@ -16,9 +16,9 @@ import java.util.List;
 public class RestApiHendler {
 
     final static String REST_API_KEY = "61273287a5a93b183d1e0525f734e787";
-    private static List<DocumentVo> result = new ArrayList<>();
 
     public static List<DocumentVo> getApi(final String msg) {
+        List<DocumentVo> result = new ArrayList<>();
         try {
 
             URL url = new URL(msg);
