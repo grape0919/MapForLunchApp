@@ -9,6 +9,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.location.LocationManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -29,9 +30,12 @@ import com.google.android.material.snackbar.Snackbar;
 import info.hkdevstudio.gom.gps.GpsTracker;
 import info.hkdevstudio.gom.handler.RequestPram;
 import info.hkdevstudio.gom.handler.RestApiHendler;
+import info.hkdevstudio.gom.vo.DocumentVo;
 import net.daum.mf.map.api.MapPOIItem;
 import net.daum.mf.map.api.MapPoint;
 import net.daum.mf.map.api.MapView;
+
+import java.util.List;
 
 public class MainActivity extends Activity {
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
@@ -56,29 +60,20 @@ public class MainActivity extends Activity {
 
         gpsTracker = new GpsTracker(this);
 
-        MapView mapView = new MapView(this);
-
+        final MapView mapView = new MapView(this);
         ViewGroup mapViewContainer = findViewById(R.id.map_view);
         mapViewContainer.addView(mapView);
 
-        double latitude = gpsTracker.getLatitude();
-        double longitude = gpsTracker.getLongitude();
+        final double latitude = gpsTracker.getLatitude();
+        final double longitude = gpsTracker.getLongitude();
 
         Log.d("DEBUG", "latitude : " + latitude);
         Log.d("DEBUG", "longitude : " + longitude);
         // 중심점 변경 + 줌 레벨 변경
 
-        mapView.setMapCenterPointAndZoomLevel(MapPoint.mapPointWithGeoCoord(latitude, longitude), 1, true);
+        mapView.setMapCenterPointAndZoomLevel(MapPoint.mapPointWithGeoCoord(latitude, longitude), 2, true);
 
-        RequestPram msg = new RequestPram();
-        msg.setY(latitude);
-        msg.setX(longitude);
-        msg.setQuery("맛집");
-        msg.setCategory_group_code("FD6");
-        msg.setRedius(5000);
-        String result = RestApiHendler.getApi(msg.toString());
-
-
+        // 현재 위치 마커
         MapPOIItem marker = new MapPOIItem();
         marker.setItemName("현재 위치");
         marker.setTag(0);
@@ -87,6 +82,34 @@ public class MainActivity extends Activity {
         marker.setSelectedMarkerType(MapPOIItem.MarkerType.RedPin); // 마커를 클릭했을때, 기본으로 제공하는 RedPin 마커 모양.
 
         mapView.addPOIItem(marker);
+
+        //검색 REST API
+        // 현재 위치 기준 반경 500m 근처 맛집 찾아서 마커로 표시
+        AsyncTask.execute(new Runnable() {
+            @Override
+            public void run() {
+                RequestPram msg = new RequestPram();
+                msg.setY(latitude);
+                msg.setX(longitude);
+                msg.setQuery("맛집");
+                msg.setCategory_group_code("FD6");
+                msg.setRedius(5000);
+
+                List<DocumentVo> result = RestApiHendler.getApi(msg.toString());
+
+                for (DocumentVo d : result) {
+                    MapPOIItem marker = new MapPOIItem();
+                    marker.setItemName(d.getPlace_name());
+                    marker.setTag(1);
+                    marker.setMapPoint(MapPoint.mapPointWithGeoCoord(Double.parseDouble(d.getY()), Double.parseDouble(d.getX())));
+                    marker.setMarkerType(MapPOIItem.MarkerType.YellowPin); // 기본으로 제공하는 BluePin 마커 모양.
+                    marker.setSelectedMarkerType(MapPOIItem.MarkerType.RedPin); // 마커를 클릭했을때, 기본으로 제공하는 RedPin 마커 모양.
+
+                    mapView.addPOIItem(marker);
+                }
+            }
+
+        });
 
     }
 
