@@ -5,7 +5,7 @@ import androidx.annotation.NonNull;
 import java.util.Map;
 
 
-public class RequestPram {
+public class RequestParam {
     final static String enpoint = "https://dapi.kakao.com/v2/local/search/keyword.json?";
     private double x;
     private double y;

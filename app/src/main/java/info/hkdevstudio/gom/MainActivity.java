@@ -18,8 +18,8 @@ import androidx.core.content.ContextCompat;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.snackbar.Snackbar;
 import info.hkdevstudio.gom.gps.GpsTracker;
-import info.hkdevstudio.gom.handler.RequestPram;
-import info.hkdevstudio.gom.handler.RestApiHendler;
+import info.hkdevstudio.gom.handler.RequestParam;
+import info.hkdevstudio.gom.handler.RestApiHandler;
 import info.hkdevstudio.gom.vo.DocumentVo;
 import net.daum.mf.map.api.MapPOIItem;
 import net.daum.mf.map.api.MapPoint;
@@ -78,14 +78,14 @@ public class MainActivity extends Activity {
         AsyncTask.execute(new Runnable() {
             @Override
             public void run() {
-                RequestPram msg = new RequestPram();
+                RequestParam msg = new RequestParam();
                 msg.setY(latitude);
                 msg.setX(longitude);
                 msg.setQuery("맛집");
                 msg.setCategory_group_code("FD6");
-                msg.setRedius(5000);
+                msg.setRedius(500);
 
-                List<DocumentVo> result = RestApiHendler.getApi(msg.toString());
+                List<DocumentVo> result = RestApiHandler.getApi(msg.toString());
 
                 for (DocumentVo d : result) {
                     MapPOIItem marker = new MapPOIItem();

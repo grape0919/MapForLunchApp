@@ -1,7 +1,9 @@
 package info.hkdevstudio.gom.handler;
 
 import android.util.Log;
+import android.util.Pair;
 import info.hkdevstudio.gom.vo.DocumentVo;
+import info.hkdevstudio.gom.vo.MetaVo;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -13,7 +15,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RestApiHendler {
+public class RestApiHandler {
 
     final static String REST_API_KEY = "61273287a5a93b183d1e0525f734e787";
 
@@ -40,7 +42,7 @@ public class RestApiHendler {
                 }
 
                 // Set the result
-                result = parse(builder.toString());
+                result = parse(builder.toString()).second;
 
                 Log.d("REST_API", "GET method succeed: " + result.toString());
             } else {
@@ -56,10 +58,20 @@ public class RestApiHendler {
     }
 
 
-    public static List<DocumentVo> parse(String jsonString) {
+    public static Pair<MetaVo, List<DocumentVo>> parse(String jsonString) {
+
+        MetaVo metaVo = new MetaVo();
         List<DocumentVo> documentVoList = new ArrayList<DocumentVo>();
         try {
+            //META 정보
             JSONObject reader = new JSONObject(jsonString);
+            JSONObject meta = reader.getJSONObject("meta");
+            metaVo.setIs_end(meta.getBoolean("is_end"));
+            metaVo.setPageable_count(meta.getInt("pageable_count"));
+            metaVo.setTotal_count(meta.getInt("total_count"));
+
+
+            //documents 정보
             JSONArray objects = reader.getJSONArray("documents");
             for (int i = 0; i < objects.length(); i++) {
                 JSONObject object = objects.getJSONObject(i);
@@ -77,7 +89,9 @@ public class RestApiHendler {
             e.printStackTrace();
             return null;
         }
-        return documentVoList;
+        Pair<MetaVo, List<DocumentVo>> result = new Pair<>(metaVo, documentVoList);
+
+        return result;
     }
 
 }
