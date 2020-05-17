@@ -137,6 +137,15 @@ public class MainActivity extends Activity {
             }
         });
 
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                renewLocation();
+            }
+        });
+
         randomChoiceButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -145,9 +154,6 @@ public class MainActivity extends Activity {
                     long seed = System.currentTimeMillis();
                     Random random = new Random(seed);
                     final int index = random.nextInt(placeList.size()-1)+1;
-                    System.out.println("placeList.size() = " + placeList.size());
-                    System.out.println("seed = " + seed);
-                    System.out.println("index = " + index);
                     Handler handler = new Handler();
                     handler.postDelayed(new Runnable() {
                         @Override
@@ -159,10 +165,6 @@ public class MainActivity extends Activity {
                             }
                         }
                     }, 300);
-
-
-
-                    //mapView.removePOIItem();
                 }
             }
         });

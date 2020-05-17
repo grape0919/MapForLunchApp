@@ -41,7 +41,11 @@ public class CustomBalloonAdapter implements CalloutBalloonAdapter {
 
             ((TextView)mCalloutBalloon.findViewById(R.id.place_name)).setText(obj.getString("place_name"));
             ((TextView)mCalloutBalloon.findViewById(R.id.food)).setText(obj.getString("category_name"));
-            ((TextView)mCalloutBalloon.findViewById(R.id.addrs)).setText(obj.getString("road_address_name"));
+            String addrs = obj.getString("road_address_name");
+            if ((addrs == null || addrs.equals(""))) {
+                addrs = obj.getString("address_name");
+            }
+            ((TextView)mCalloutBalloon.findViewById(R.id.addrs)).setText((addrs!=null&&!addrs.equals(""))?addrs:"");
             ((TextView)mCalloutBalloon.findViewById(R.id.phone)).setText(obj.getString("phone"));
         } catch (JSONException e) {
             e.printStackTrace();
