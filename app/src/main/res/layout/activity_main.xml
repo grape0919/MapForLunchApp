@@ -25,7 +25,8 @@
                   android:layout_marginStart="10sp"
                   android:layout_marginLeft="10sp" android:layout_marginRight="10sp"
                   android:paddingLeft="10sp"
-                  android:textColor="@color/button_txt" android:fontFamily="@font/kukde_l"
+                  android:textColor="@color/button_txt" android:fontFamily="@font/dangdang"
+                  android:text="맛집"
                   android:textColorHighlight="@color/pnt"
                   android:singleLine="true" android:maxLength="20" android:imeOptions="actionSearch"
         />
@@ -73,7 +74,8 @@
             android:background="@drawable/button_selector"
             android:textColor="@drawable/button_selector"
 
-            android:fontFamily="@font/kukde_b"
+            android:fontFamily="@font/dangdang"
+            android:textSize="18sp"
             />
 
 

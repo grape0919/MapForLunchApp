@@ -8,4 +8,14 @@
             android:fontStyle = "normal"
             android:fontWeight = "400"
             android:font = "@font/kukde_b"/>
+
+    <font
+            android:fontStyle="normal"
+            android:fontWeight="400"
+            android:font="@font/ulji_b"/>
+
+    <font
+            android:fontStyle="normal"
+            android:fontWeight="400"
+            android:font="@font/dangdang"/>
 </font-family>
