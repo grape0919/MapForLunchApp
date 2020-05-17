@@ -3,6 +3,10 @@
     <string name="app_name_first">식사의</string>
     <string name="app_name_second">신</string>
     <string name="draw_button_text">골라줘 내 점심</string>
+
+    <string name="describe_radius">맛집 검색 반경</string>
+    <string name="describe_my_location">내 위치 새로고침</string>
+
     <string name="app_key">12c44344ad623d74f5f4c491a758f1e7</string>
     <string name="rest_api_key">61273287a5a93b183d1e0525f734e787</string>
 </resources>

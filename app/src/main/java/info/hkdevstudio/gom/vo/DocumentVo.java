@@ -159,4 +159,21 @@ public class DocumentVo {
                 ", y='" + y + '\'' +
                 '}';
     }
+
+    public String toJson(){
+        return "{" +
+                "\"place_name\":'" + place_name + '\'' +
+                ",\"distance\":'" + distance + '\'' +
+                ",\"place_url\":'" + place_url + '\'' +
+                ",\"category_name\":'" + category_name + '\'' +
+                ",\"address_name\":'" + address_name + '\'' +
+                ",\"road_address_name\":'" + road_address_name + '\'' +
+                ",\"id\":'" + id + '\'' +
+                ",\"phone\":'" + phone + '\'' +
+                ",\"category_group_code\":'" + category_group_code + '\'' +
+                ",\"category_group_name\":'" + category_group_name + '\'' +
+                ",\"x\":'" + x + '\'' +
+                ",\"y\":'" + y + '\'' +
+                '}';
+    }
 }

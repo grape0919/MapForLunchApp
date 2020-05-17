@@ -19,8 +19,8 @@ public class RestApiHandler {
 
     final static String REST_API_KEY = "61273287a5a93b183d1e0525f734e787";
 
-    public static List<DocumentVo> getApi(final String msg) {
-        List<DocumentVo> result = new ArrayList<>();
+    public static Pair<MetaVo, List<DocumentVo>> getApi(final String msg) {
+        Pair<MetaVo, List<DocumentVo>> result;
         try {
 
             URL url = new URL(msg);
@@ -29,7 +29,6 @@ public class RestApiHandler {
             conn.setRequestProperty("User-Agent", "Mozilla/5.0 ( compatible ) ");
             conn.setRequestProperty("Accept", "*/*");
             conn.setRequestMethod("GET");
-            Log.d("REST API", "response Cosde : " + conn.getResponseCode());
             if (conn.getResponseCode() == 200) {
                 InputStream is = conn.getInputStream();
 
@@ -41,8 +40,10 @@ public class RestApiHandler {
                     builder.append(line);
                 }
 
+                Log.d("REST API", "response : " + builder.toString());
                 // Set the result
-                result = parse(builder.toString()).second;
+
+                result = parse(builder.toString());
 
                 Log.d("REST_API", "GET method succeed: " + result.toString());
             } else {
@@ -52,7 +53,7 @@ public class RestApiHandler {
             // Error calling the rest api
             Log.e("REST_API", "GET method failed: " + e.getMessage());
             e.printStackTrace();
-            result = new ArrayList<>();
+            result = new Pair<>(null, null);
         }
         return result;
     }
@@ -77,9 +78,17 @@ public class RestApiHandler {
                 JSONObject object = objects.getJSONObject(i);
                 //DocumentVo 클래스에 json 데이터 할당.
                 DocumentVo documentVo = new DocumentVo();
+                documentVo.setId(object.getString("id"));
                 documentVo.setPlace_name(object.getString("place_name"));
                 documentVo.setDistance(object.getString("distance"));
                 documentVo.setPlace_url(object.getString("place_url"));
+                documentVo.setAddress_name(object.getString("address_name"));
+                documentVo.setRoad_address_name(object.getString("road_address_name"));
+                documentVo.setCategory_name(object.getString("category_name"));
+                documentVo.setCategory_group_code(object.getString("category_group_code"));
+                documentVo.setCategory_group_name(object.getString("category_group_name"));
+                documentVo.setPhone(object.getString("phone"));
+
                 documentVo.setX(object.getString("x"));
                 documentVo.setY(object.getString("y"));
                 documentVoList.add(documentVo);

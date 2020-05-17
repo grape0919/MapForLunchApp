@@ -3,4 +3,21 @@
     <color name="colorPrimary">#008577</color>
     <color name="colorPrimaryDark">#00574B</color>
     <color name="colorAccent">#D81B60</color>
+
+    <color name="button_bck">#869DAB</color>
+    <color name="button_bck_dark">#5D6F7C</color>
+    <color name="button_txt">#FFFFFF</color>
+    <color name="clicked_button_bck">#5B6A74</color>
+    <color name="clicked_button_txt">#868686</color>
+
+    <color name="frg">#FEEFDE</color>
+    <color name="bck">#847072</color>
+    <color name="pnt">#DCC1B0</color>
+
+    <color name="gray">#535353</color>
+    <color name="marker_red">#913535</color>
+    <color name="marker_yellow">#d8a91c</color>
+    <color name="marker_green">#2d7f4a</color>
+    <color name="marker_pupleblue">#342e82</color>
+    <color name="marker_mint">#5d9e9e</color>
 </resources>

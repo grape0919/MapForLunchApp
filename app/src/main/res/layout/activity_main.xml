@@ -7,14 +7,73 @@
         tools:context=".MainActivity"
         android:id="@+id/layout_main">
 
+    <LinearLayout android:id="@+id/search_view" android:layout_width="match_parent" android:layout_height="40sp"
+                  android:orientation="horizontal" android:background="@color/button_bck"
+                  android:gravity="center" android:layout_alignParentTop="true">
+
+        <ImageButton android:id="@+id/search_button" android:layout_width="wrap_content"
+                     android:layout_height="wrap_content"
+                     android:background="@drawable/button_selector" android:tint="@drawable/button_selector"
+                     android:src="@drawable/ic_search_black_24dp"
+                     android:layout_marginLeft="10sp" android:layout_marginStart="10sp"/>
+
+        <EditText android:id="@+id/search_keyword"
+                  android:layout_width="300sp" android:layout_height="match_parent"
+                  android:background="@color/button_bck_dark"
+                  android:layout_marginTop="3sp"
+                  android:layout_marginBottom="3sp"
+                  android:layout_marginStart="10sp"
+                  android:layout_marginLeft="10sp" android:layout_marginRight="10sp"
+                  android:paddingLeft="10sp"
+                  android:textColor="@color/button_txt" android:fontFamily="@font/kukde_l"
+                  android:textColorHighlight="@color/pnt"
+                  android:singleLine="true" android:maxLength="20" android:imeOptions="actionSearch"
+        />
+
+
+    </LinearLayout>
+
     <RelativeLayout
             android:id="@+id/map_view"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentTop="true" android:layout_above="@+id/choose_button"/>
+            android:layout_above="@+id/choose_button"
+            android:layout_below="@+id/search_view">
+    </RelativeLayout>
+
+    <ImageButton android:id="@+id/radius" android:layout_width="40sp"
+                 android:layout_height="40sp"
+                 android:src="@drawable/ic_iconmonstr_ruler_1"
+                 android:layout_marginBottom="20sp"
+                 android:layout_marginRight="20sp"
+                 android:layout_marginEnd="20sp"
+
+                 android:background="@drawable/button_selector"
+                 android:tint="@drawable/button_selector"
+
+                 android:layout_alignParentRight="true" android:layout_above="@id/renew_my_location"
+                 android:layout_alignParentEnd="true" android:contentDescription="@string/describe_radius"/>
+
+    <ImageButton android:id="@+id/renew_my_location" android:layout_width="40sp"
+                 android:layout_height="40sp"
+                 android:src="@drawable/ic_my_location"
+                 android:layout_marginBottom="20sp"
+                 android:layout_marginRight="20sp"
+                 android:layout_marginEnd="20sp"
+
+                 android:background="@drawable/button_selector"
+                 android:tint="@drawable/button_selector"
+
+                 android:layout_alignParentRight="true" android:layout_above="@id/choose_button"
+                 android:layout_alignParentEnd="true" android:contentDescription="@string/describe_my_location"/>
 
     <Button android:id="@+id/choose_button" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/draw_button_text" android:layout_alignParentBottom="true"
+
+            android:background="@drawable/button_selector"
+            android:textColor="@drawable/button_selector"
+
+            android:fontFamily="@font/kukde_b"
             />
 
 

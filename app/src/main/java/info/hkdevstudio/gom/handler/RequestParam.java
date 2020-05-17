@@ -9,7 +9,8 @@ public class RequestParam {
     final static String enpoint = "https://dapi.kakao.com/v2/local/search/keyword.json?";
     private double x;
     private double y;
-    private int redius;
+    private int radius;
+    private int page;
     private String query;
     private String category_group_code;
     private Map<String, String> properties;
@@ -17,9 +18,17 @@ public class RequestParam {
     @NonNull
     @Override
     public String toString() {
-        String value = enpoint + "y=" + y + "&x=" + x + "&redius=" + redius + "&query=" + query;
+        String value = enpoint + "y=" + y + "&x=" + x + "&radius=" + radius + "&query=" + query + "&page=" + page;
         value += (category_group_code != null && !category_group_code.equals(""))?"&category_group_code=" + category_group_code:"";
         return value;
+    }
+
+    public int getPage() {
+        return page;
+    }
+
+    public void setPage(int page) {
+        this.page = page;
     }
 
     public static String getEnpoint() {
@@ -42,12 +51,12 @@ public class RequestParam {
         this.y = y;
     }
 
-    public int getRedius() {
-        return redius;
+    public int getRadius() {
+        return radius;
     }
 
-    public void setRedius(int redius) {
-        this.redius = redius;
+    public void setRadius(int radius) {
+        this.radius = radius;
     }
 
     public String getQuery() {

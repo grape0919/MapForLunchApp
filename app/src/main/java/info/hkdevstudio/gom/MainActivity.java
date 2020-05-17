@@ -6,26 +6,45 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.location.LocationManager;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
+import android.util.Pair;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.*;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.snackbar.Snackbar;
+import info.hkdevstudio.gom.conf.Configuration;
+import info.hkdevstudio.gom.db.DBManager;
+import info.hkdevstudio.gom.db.UserContDB;
 import info.hkdevstudio.gom.gps.GpsTracker;
 import info.hkdevstudio.gom.handler.RequestParam;
 import info.hkdevstudio.gom.handler.RestApiHandler;
+import info.hkdevstudio.gom.util.GomStaticUtil;
+import info.hkdevstudio.gom.view.dialog.InputDialog;
+import info.hkdevstudio.gom.view.map.CustomBalloonAdapter;
 import info.hkdevstudio.gom.vo.DocumentVo;
+import info.hkdevstudio.gom.vo.MetaVo;
 import net.daum.mf.map.api.MapPOIItem;
 import net.daum.mf.map.api.MapPoint;
 import net.daum.mf.map.api.MapView;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 public class MainActivity extends Activity {
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
@@ -34,79 +53,125 @@ public class MainActivity extends Activity {
     GpsTracker gpsTracker;
 
     private View mLayout;
+
+    Configuration conf;
+    DBManager db;
+
+    MapView mapView;
+    Button randomChoiceButton;
+    ImageButton radius;
+    ImageButton myLocation;
+
+    ImageButton searchButton;
+    EditText searchKeyword;
+
+    List<MapPOIItem> placeList = new ArrayList<>();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        //main 화면 시작
         setContentView(R.layout.activity_main);
-
+        //버튼 및 레이아웃 세팅
         mLayout = findViewById(R.id.layout_main);
-        if (!checkLocationServicesStatus()) {
-
-            showDialogForLocationServiceSetting();
-        }else {
-
-            checkPermition();
-        }
-
+        randomChoiceButton = findViewById(R.id.choose_button);
+        myLocation = findViewById(R.id.renew_my_location);
+        radius = findViewById(R.id.radius);
         gpsTracker = new GpsTracker(this);
 
-        final MapView mapView = new MapView(this);
+        searchButton = findViewById(R.id.search_button);
+        searchKeyword = findViewById(R.id.search_keyword);
+
+        searchKeyword.setText("맛집");
+
+        if (!checkLocationServicesStatus()) {
+            showDialogForLocationServiceSetting();
+        }else {
+            checkPermission();
+        }
+
+        //설정값 세팅
+        db = new DBManager(this);
+        db.onCreate(db.getWritableDatabase());
+
+        conf = new Configuration();
+        String distance = db.selectUserConf(UserContDB.DISTANCE_KEY);
+        conf.setDisatance(Integer.parseInt(distance));
+
+        //지도 생성
+        mapView = new MapView(this);
         ViewGroup mapViewContainer = findViewById(R.id.map_view);
         mapViewContainer.addView(mapView);
 
-        final double latitude = gpsTracker.getLatitude();
-        final double longitude = gpsTracker.getLongitude();
+        //커스텀 말풍선
+        mapView.setCalloutBalloonAdapter(new CustomBalloonAdapter(this));
 
-        Log.d("DEBUG", "latitude : " + latitude);
-        Log.d("DEBUG", "longitude : " + longitude);
-        // 중심점 변경 + 줌 레벨 변경
-
-        mapView.setMapCenterPointAndZoomLevel(MapPoint.mapPointWithGeoCoord(latitude, longitude), 2, true);
-
-        // 현재 위치 마커
-        MapPOIItem marker = new MapPOIItem();
-        marker.setItemName("현재 위치");
-        marker.setTag(0);
-        marker.setMapPoint(MapPoint.mapPointWithGeoCoord(latitude, longitude));
-        marker.setMarkerType(MapPOIItem.MarkerType.BluePin); // 기본으로 제공하는 BluePin 마커 모양.
-        marker.setSelectedMarkerType(MapPOIItem.MarkerType.RedPin); // 마커를 클릭했을때, 기본으로 제공하는 RedPin 마커 모양.
-
-        mapView.addPOIItem(marker);
-
-        //검색 REST API
-        // 현재 위치 기준 반경 500m 근처 맛집 찾아서 마커로 표시
-        AsyncTask.execute(new Runnable() {
+        myLocation.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void run() {
-                RequestParam msg = new RequestParam();
-                msg.setY(latitude);
-                msg.setX(longitude);
-                msg.setQuery("맛집");
-                msg.setCategory_group_code("FD6");
-                msg.setRedius(500);
+            public void onClick(View v) {
+                renewLocation();
+            }
+        });
 
-                List<DocumentVo> result = RestApiHandler.getApi(msg.toString());
 
-                for (DocumentVo d : result) {
-                    MapPOIItem marker = new MapPOIItem();
-                    marker.setItemName(d.getPlace_name());
-                    marker.setTag(1);
-                    marker.setMapPoint(MapPoint.mapPointWithGeoCoord(Double.parseDouble(d.getY()), Double.parseDouble(d.getX())));
-                    marker.setMarkerType(MapPOIItem.MarkerType.YellowPin); // 기본으로 제공하는 BluePin 마커 모양.
-                    marker.setSelectedMarkerType(MapPOIItem.MarkerType.RedPin); // 마커를 클릭했을때, 기본으로 제공하는 RedPin 마커 모양.
+        radius.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                InputDialog dialog = new InputDialog(MainActivity.this, db, conf);
+                dialog.show();
+            }
+        });
 
-                    mapView.addPOIItem(marker);
+        searchKeyword.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+
+                if(actionId == EditorInfo.IME_ACTION_SEARCH) { // 뷰의 id를 식별, 키보드의 완료 키 입력 검출
+                    InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(v.getWindowToken(), 0);
+                    renewLocation();
+                    return true;
+                }
+                return false;
+            }
+        });
+
+        randomChoiceButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(placeList!=null && placeList.size() > 0){
+                    //TODO placeList 에서 뽑기
+                    long seed = System.currentTimeMillis();
+                    Random random = new Random(seed);
+                    final int index = random.nextInt(placeList.size()-1)+1;
+                    System.out.println("placeList.size() = " + placeList.size());
+                    System.out.println("seed = " + seed);
+                    System.out.println("index = " + index);
+                    Handler handler = new Handler();
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            if(Arrays.asList(mapView.getPOIItems()).equals(placeList)){
+                                mapView.selectPOIItem(placeList.get(index), true);
+                            }else{
+                                Toast.makeText(MainActivity.this, "아직 맛집을 모두 불러오지 못했어요!", Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    }, 300);
+
+
+
+                    //mapView.removePOIItem();
                 }
             }
-
         });
+
+        renewLocation();
 
     }
 
-
-    public void checkPermition(){
-        //런타임 퍼미션 처리
-        // 1. 위치 퍼미션을 가지고 있는지 체크합니다.
+    public boolean hasPermission(){
         int hasFineLocationPermission = ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION);
         int hasCoarseLocationPermission = ContextCompat.checkSelfPermission(this,
@@ -121,9 +186,27 @@ public class MainActivity extends Activity {
             // ( 안드로이드 6.0 이하 버전은 런타임 퍼미션이 필요없기 때문에 이미 허용된 걸로 인식합니다.)
 
             Log.d("[DEBUG]", "퍼미션 갖고 있음");
-            //startLocationUpdates(); // 3. 위치 업데이트 시작
+            return true;
+        }else{
+            return false;
+        }
+    }
 
+    public void checkPermission(){
+        //런타임 퍼미션 처리
+        // 1. 위치 퍼미션을 가지고 있는지 체크합니다.
+        int hasFineLocationPermission = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_FINE_LOCATION);
+        int hasCoarseLocationPermission = ContextCompat.checkSelfPermission(this,
+                Manifest.permission.ACCESS_COARSE_LOCATION);
 
+        if (hasFineLocationPermission == PackageManager.PERMISSION_GRANTED &&
+                hasCoarseLocationPermission == PackageManager.PERMISSION_GRANTED   ) {
+
+            // 2. 이미 퍼미션을 가지고 있다면
+            // ( 안드로이드 6.0 이하 버전은 런타임 퍼미션이 필요없기 때문에 이미 허용된 걸로 인식합니다.)
+
+            Log.d("[DEBUG]", "퍼미션 갖고 있음");
         }else {  //2. 퍼미션 요청을 허용한 적이 없다면 퍼미션 요청이 필요합니다. 2가지 경우(3-1, 4-1)가 있습니다.
 
             // 3-1. 사용자가 퍼미션 거부를 한 적이 있는 경우에는
@@ -150,53 +233,33 @@ public class MainActivity extends Activity {
                 ActivityCompat.requestPermissions( this, REQUIRED_PERMISSIONS,
                         PERMISSIONS_REQUEST_CODE);
             }
-
         }
     }
 
     public void setDefaultLocation() {
 
+        mapView.removeAllPOIItems();
 
         //디폴트 위치, Seoul
         LatLng DEFAULT_LOCATION = new LatLng(37.56, 126.97);
         String markerTitle = "위치정보 가져올 수 없음";
-        String markerSnippet = "위치 퍼미션과 GPS 활성 요부 확인하세요";
+        String markerSnippet = "위치 퍼미션과 GPS 활성 확인하세요";
 
+        // 현재 위치 마커
+        MapPOIItem marker = new MapPOIItem();
+        marker.setItemName("위치 정보를 가져올 수 없습니다.");
+        marker.setTag(0);
 
-//        if (currentMarker != null) currentMarker.remove();
-//
-//        MarkerOptions markerOptions = new MarkerOptions();
-//        markerOptions.position(DEFAULT_LOCATION);
-//        markerOptions.title(markerTitle);
-//        markerOptions.snippet(markerSnippet);
-//        markerOptions.draggable(true);
-//        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-//        currentMarker = mMap.addMarker(markerOptions);
-//
-//        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(DEFAULT_LOCATION, 15);
-//        mMap.moveCamera(cameraUpdate);
+        marker.setMapPoint(MapPoint.mapPointWithGeoCoord(DEFAULT_LOCATION.latitude, DEFAULT_LOCATION.longitude));
+        marker.setMarkerType(MapPOIItem.MarkerType.CustomImage);
+        Bitmap markerImg = GomStaticUtil.getBitmapFromVectorDrawable(this, R.drawable.marker_red);
+        marker.setCustomImageBitmap(markerImg);
+        marker.setCustomImageAutoscale(false);
+        marker.setCustomImageAnchor(0.5f, 1.0f);
 
+        mapView.addPOIItem(marker);
     }
 
-
-    //여기부터는 런타임 퍼미션 처리을 위한 메소드들
-    private boolean checkPermission() {
-
-        int hasFineLocationPermission = ContextCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_FINE_LOCATION);
-        int hasCoarseLocationPermission = ContextCompat.checkSelfPermission(this,
-                Manifest.permission.ACCESS_COARSE_LOCATION);
-
-
-
-        if (hasFineLocationPermission == PackageManager.PERMISSION_GRANTED &&
-                hasCoarseLocationPermission == PackageManager.PERMISSION_GRANTED   ) {
-            return true;
-        }
-
-        return false;
-
-    }
 
 
 
@@ -228,7 +291,7 @@ public class MainActivity extends Activity {
             if ( check_result ) {
 
                 // 퍼미션을 허용했다면 위치 업데이트를 시작합니다.
-                //startLocationUpdates();
+                renewLocation();
             }
             else {
                 // 거부한 퍼미션이 있다면 앱을 사용할 수 없는 이유를 설명해주고 앱을 종료합니다.2 가지 경우가 있습니다.
@@ -324,5 +387,101 @@ public class MainActivity extends Activity {
         }
     }
 
+    public void renewLocation(){
 
+        if(hasPermission()) {
+            gpsTracker.getLocation();
+            final double latitude = gpsTracker.getLatitude();
+            final double longitude = gpsTracker.getLongitude();
+
+            //검색 REST API
+            // 현재 위치 기준 반경 500m 근처 맛집 찾아서 마커로 표시
+            AsyncTask.execute(new Runnable() {
+                @RequiresApi(api = Build.VERSION_CODES.KITKAT)
+                @Override
+                public synchronized void run() {
+                    boolean is_end = false;
+                    int page = 1;
+                    placeList.clear();
+
+                    Log.d("DEBUG", "latitude : " + latitude);
+                    Log.d("DEBUG", "longitude : " + longitude);
+                    // 중심점 변경 + 줌 레벨 변경
+
+                    mapView.setMapCenterPointAndZoomLevel(MapPoint.mapPointWithGeoCoord(latitude, longitude), 1, true);
+
+                    // 이전에 그려진 마커들 삭제
+                    mapView.removeAllPOIItems();
+
+                    // 현재 위치 마커
+                    MapPOIItem marker = new MapPOIItem();
+                    marker.setItemName("현재 위치");
+                    marker.setTag(0);
+
+                    marker.setMapPoint(MapPoint.mapPointWithGeoCoord(latitude, longitude));
+                    marker.setMarkerType(MapPOIItem.MarkerType.CustomImage);
+                    Bitmap markerImg = GomStaticUtil.getBitmapFromVectorDrawable(MainActivity.this, R.drawable.me);
+                    marker.setCustomImageBitmap(markerImg);
+                    marker.setCustomImageAutoscale(false);
+                    marker.setCustomImageAnchor(0.5f, 1.0f);
+
+                    mapView.addPOIItem(marker);
+                    placeList.add(marker);
+                    do {
+                        RequestParam msg = new RequestParam();
+                        msg.setY(latitude);
+                        msg.setX(longitude);
+                        msg.setQuery(searchKeyword.getText().toString().equals("")?"맛집":searchKeyword.getText().toString());
+                        msg.setCategory_group_code("FD6");
+                        msg.setRadius(conf.getDisatance());
+                        msg.setPage(page);
+
+                        Pair<MetaVo, List<DocumentVo>> result = RestApiHandler.getApi(msg.toString());
+                        is_end = result.first.getIs_end();
+
+                        for (DocumentVo d : result.second) {
+                            MapPOIItem subMarker = new MapPOIItem();
+
+                            if(d.getCategory_name().contains("간식")){
+                                continue;
+                            }
+
+                            String itemDetail = d.toJson();
+
+                            subMarker.setItemName(itemDetail);
+                            int id = 1;
+                            if (d.getId() != null) {
+                                id = Integer.parseInt(d.getId());
+                            }
+                            subMarker.setTag(id);
+                            subMarker.setMapPoint(MapPoint.mapPointWithGeoCoord(Double.parseDouble(d.getY()), Double.parseDouble(d.getX())));
+                            subMarker.setMarkerType(MapPOIItem.MarkerType.CustomImage);
+                            Bitmap subMarkerImg = GomStaticUtil.getBitmapFromVectorDrawable(MainActivity.this, R.drawable.marker_mint);
+                            subMarker.setCustomImageBitmap(subMarkerImg);
+
+                            subMarker.setSelectedMarkerType(MapPOIItem.MarkerType.CustomImage);
+                            Bitmap selectedMarkerImg = GomStaticUtil.getBitmapFromVectorDrawable(MainActivity.this, R.drawable.marker_pupleblue);
+                            subMarker.setCustomSelectedImageBitmap(selectedMarkerImg);
+
+                            subMarker.setCustomImageAutoscale(false);
+                            subMarker.setCustomImageAnchor(0.5f, 1.0f);
+                            placeList.add(subMarker);
+                        }
+                        page++;
+                    } while (!is_end);
+                    mapView.addPOIItems(placeList.toArray(new MapPOIItem[placeList.size()]));
+                }
+
+            });
+        }else{
+            setDefaultLocation();
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        db.close();
+        gpsTracker.stopUsingGPS();
+        super.onDestroy();
+    }
 }
