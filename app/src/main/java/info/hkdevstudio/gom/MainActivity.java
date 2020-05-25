@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.location.LocationManager;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,6 +20,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.*;
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
@@ -26,6 +31,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.snackbar.Snackbar;
+import com.sothree.slidinguppanel.SlidingUpPanelLayout;
 import info.hkdevstudio.gom.conf.Configuration;
 import info.hkdevstudio.gom.db.DBManager;
 import info.hkdevstudio.gom.db.UserContDB;
@@ -40,15 +46,21 @@ import info.hkdevstudio.gom.vo.MetaVo;
 import net.daum.mf.map.api.MapPOIItem;
 import net.daum.mf.map.api.MapPoint;
 import net.daum.mf.map.api.MapView;
+import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements MapView.POIItemEventListener{
     private static final int GPS_ENABLE_REQUEST_CODE = 2001;
     private static final int PERMISSIONS_REQUEST_CODE = 100;
+    private final long FINISH_INTERVAL_TIME = 2000;
+    private long backPressedTime = 0;
+
     String[] REQUIRED_PERMISSIONS  = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
     GpsTracker gpsTracker;
 
@@ -65,8 +77,12 @@ public class MainActivity extends Activity {
     ImageButton searchButton;
     EditText searchKeyword;
 
+    TextView detailTitle;
+    WebView webView;
+    WebSettings mWebSettings;
     List<MapPOIItem> placeList = new ArrayList<>();
 
+    SlidingUpPanelLayout slidingLayout;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -77,12 +93,91 @@ public class MainActivity extends Activity {
         randomChoiceButton = findViewById(R.id.choose_button);
         myLocation = findViewById(R.id.renew_my_location);
         radius = findViewById(R.id.radius);
-        gpsTracker = new GpsTracker(this);
+
+        //detailTitle = findViewById(R.id.detail_title);
+        //
+        // detailTitle.setText("TEST");
+
+        slidingLayout = findViewById(R.id.layout_main);
+        slidingLayout.addPanelSlideListener(new SlidingUpPanelLayout.PanelSlideListener() {
+            @Override
+            public void onPanelSlide(View panel, float slideOffset) {
+                if(slideOffset == 1.0f){
+                    slidingLayout.setTouchEnabled(false);
+                }else{
+                    slidingLayout.setTouchEnabled(true);
+                }
+            }
+
+            @Override
+            public void onPanelStateChanged(View panel, SlidingUpPanelLayout.PanelState previousState, SlidingUpPanelLayout.PanelState newState) {
+
+            }
+
+
+        });
+
+        webView = findViewById(R.id.detail_web_view);
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if(webView.getUrl().equals(url)){
+                    return true;
+                }
+                try {
+                    if (url.startsWith("tel:")) {
+                        Intent tel = new Intent(Intent.ACTION_DIAL, Uri.parse(url));
+                        startActivity(tel);
+                        return true;
+                    } else if(url.startsWith("intent:")){
+                        Intent intent = null;
+
+                        intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+
+                        Intent existPackage = getPackageManager().getLaunchIntentForPackage(intent.getPackage());
+                        if (existPackage != null) {
+                            startActivity(intent);
+                        } else {
+                            Intent marketIntent = new Intent(Intent.ACTION_VIEW);
+                            marketIntent.setData(Uri.parse("market://details?id="+intent.getPackage()));
+                            startActivity(marketIntent);
+                        }
+                        return true;
+                    }else{
+                        return false;
+//                        return super.shouldOverrideUrlLoading(view, request);
+                    }
+                    /*else{
+                        return super.shouldOverrideUrlLoading(view, request);
+                    }*/
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                    return super.shouldOverrideUrlLoading(view, request);
+                }
+            }
+        });// 클릭시 새창 안뜨게
+        mWebSettings = webView.getSettings(); //세부 세팅 등록
+        mWebSettings.setJavaScriptEnabled(true); // 웹페이지 자바스클비트 허용 여부
+        mWebSettings.setSupportMultipleWindows(false); // 새창 띄우기 허용 여부
+        mWebSettings.setJavaScriptCanOpenWindowsAutomatically(false); // 자바스크립트 새창 띄우기(멀티뷰) 허용 여부
+        mWebSettings.setLoadWithOverviewMode(true); // 메타태그 허용 여부
+        mWebSettings.setUseWideViewPort(true); // 화면 사이즈 맞추기 허용 여부
+        mWebSettings.setSupportZoom(false); // 화면 줌 허용 여부
+        mWebSettings.setBuiltInZoomControls(false); // 화면 확대 축소 허용 여부
+        mWebSettings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.SINGLE_COLUMN); // 컨텐츠 사이즈 맞추기
+        mWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE); // 브라우저 캐시 허용 여부
+        mWebSettings.setDomStorageEnabled(true); // 로컬저장소 허용 여부
+
+
 
         searchButton = findViewById(R.id.search_button);
         searchKeyword = findViewById(R.id.search_keyword);
-
         searchKeyword.setText("맛집");
+
+        gpsTracker = new GpsTracker(this);
+
 
         if (!checkLocationServicesStatus()) {
             showDialogForLocationServiceSetting();
@@ -105,6 +200,7 @@ public class MainActivity extends Activity {
 
         //커스텀 말풍선
         mapView.setCalloutBalloonAdapter(new CustomBalloonAdapter(this));
+        mapView.setPOIItemEventListener(this);
 
         myLocation.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -160,6 +256,7 @@ public class MainActivity extends Activity {
                         public void run() {
                             if(Arrays.asList(mapView.getPOIItems()).equals(placeList)){
                                 mapView.selectPOIItem(placeList.get(index), true);
+                                onPOIItemSelected(mapView, placeList.get(index));
                             }else{
                                 Toast.makeText(MainActivity.this, "아직 맛집을 모두 불러오지 못했어요!", Toast.LENGTH_LONG).show();
                             }
@@ -171,6 +268,16 @@ public class MainActivity extends Activity {
 
         renewLocation();
 
+    }
+
+    public void selectMarker(String url){
+        if(webView != null && url != null && !url.equals("")) {
+            url = url.replaceAll("http", "https");
+            System.out.println("!@#!@# selectMarker : " + url);
+            webView.loadUrl(url);
+
+            slidingLayout.setPanelState(SlidingUpPanelLayout.PanelState.EXPANDED);
+        }
     }
 
     public boolean hasPermission(){
@@ -434,7 +541,7 @@ public class MainActivity extends Activity {
                         msg.setY(latitude);
                         msg.setX(longitude);
                         msg.setQuery(searchKeyword.getText().toString().equals("")?"맛집":searchKeyword.getText().toString());
-                        msg.setCategory_group_code("FD6");
+                        //msg.setCategory_group_code("FD6");
                         msg.setRadius(conf.getDisatance());
                         msg.setPage(page);
 
@@ -485,5 +592,63 @@ public class MainActivity extends Activity {
         db.close();
         gpsTracker.stopUsingGPS();
         super.onDestroy();
+    }
+
+    @Override
+    public void onPOIItemSelected(MapView mapView, MapPOIItem mapPOIItem) {
+        String info = mapPOIItem.getItemName();
+        JSONObject obj = null;
+        try {
+            obj = new JSONObject(info);
+            String url = obj.getString("place_url");
+            System.out.println("onPOIItemSeleted");
+            selectMarker(url);
+        }catch (JSONException e){
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onCalloutBalloonOfPOIItemTouched(MapView mapView, MapPOIItem mapPOIItem) {
+        String info = mapPOIItem.getItemName();
+        JSONObject obj = null;
+        try {
+            obj = new JSONObject(info);
+            String url = obj.getString("place_url");
+            System.out.println("onCalloutBalloonOfPOIItemTouched");
+            selectMarker(url);
+        }catch (JSONException e){
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onCalloutBalloonOfPOIItemTouched(MapView mapView, MapPOIItem mapPOIItem, MapPOIItem.CalloutBalloonButtonType calloutBalloonButtonType) {
+    }
+
+    @Override
+    public void onDraggablePOIItemMoved(MapView mapView, MapPOIItem mapPOIItem, MapPoint mapPoint) {
+
+    }
+
+    @Override
+    public void onBackPressed() {
+        if(slidingLayout.getPanelState()==SlidingUpPanelLayout.PanelState.EXPANDED){
+            if(webView.canGoBack()){
+                webView.goBack();
+            }else {
+                slidingLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
+            }
+        }else {
+            long tempTime = System.currentTimeMillis();
+            long intervalTime = tempTime - backPressedTime;
+
+            if (0 <= intervalTime && FINISH_INTERVAL_TIME >= intervalTime) {
+                super.onBackPressed();
+            } else {
+                backPressedTime = tempTime;
+                Toast.makeText(getApplicationContext(), "한번 더 뒤로가기 누르면 꺼버린다.", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 }

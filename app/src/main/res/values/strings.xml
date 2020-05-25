@@ -1,7 +1,7 @@
 <resources>
-    <string name="app_name">식사의\n신</string>
-    <string name="app_name_first">식사의</string>
-    <string name="app_name_second">신</string>
+    <string name="app_name">김대리\n밥지도</string>
+    <string name="app_name_first">김대리</string>
+    <string name="app_name_second">밥지도</string>
     <string name="draw_button_text">골라줘 내 점심</string>
 
     <string name="describe_radius">맛집 검색 반경</string>
