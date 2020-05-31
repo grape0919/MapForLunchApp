@@ -13,13 +13,14 @@
         app:umanoScrollableView="@id/detail_web_view"
         app:umanoOverlay="false"
         app:umanoFadeColor="#00000000"
-        app:umanoPanelHeight="25dp"
+        app:umanoPanelHeight="15dp"
         app:umanoShadowHeight="10dp"
         app:umanoParallaxOffset="200dp">
     <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             >
+
 
         <LinearLayout android:id="@+id/search_view" android:layout_width="match_parent" android:layout_height="40sp"
                       android:orientation="horizontal" android:background="@color/button_bck"
@@ -47,14 +48,17 @@
 
         </LinearLayout>
 
+
         <RelativeLayout
                 android:id="@+id/map_view"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_above="@+id/choose_button"
-                android:layout_below="@+id/search_view">
+
+                android:layout_below="@+id/search_view"
+                android:layout_above="@+id/choose_button">
 
         </RelativeLayout>
+
 
         <ImageButton android:id="@+id/radius" android:layout_width="40sp"
                      android:layout_height="40sp"
@@ -82,6 +86,17 @@
                      android:layout_alignParentRight="true" android:layout_above="@id/choose_button"
                      android:layout_alignParentEnd="true" android:contentDescription="@string/describe_my_location"/>
 
+        <com.google.android.gms.ads.AdView
+                xmlns:ads="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/adView"
+                android:layout_below="@id/search_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                ads:adSize="BANNER"
+                android:layout_gravity="center"
+                ads:adUnitId="@string/banner_ad_unit_id"/>
+
         <Button android:id="@+id/choose_button" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="@string/draw_button_text" android:layout_alignParentBottom="true"
 
@@ -97,10 +112,19 @@
                   android:clickable="true" android:orientation="vertical" android:focusable="false"
                 android:background="#FFFFFF">
 
+        <ImageButton android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:id="@+id/web_view_close" android:src="@drawable/ic_cancel_black_24dp"
+                android:layout_marginTop="15sp" android:layout_gravity="right" android:background="#FFFFFF"
+                android:layout_marginRight="20sp"/>
+        <ProgressBar android:id="@+id/web_view_progressBar"
+                     android:layout_width="match_parent" android:layout_height="wrap_content"
+                     android:layout_gravity="center"
+                     android:visibility="gone"/>
+
         <WebView android:id="@+id/detail_web_view" android:layout_width="wrap_content" android:layout_height="wrap_content"
                  android:textColor="#000000"
                  android:text="CONTENTS" tools:ignore="WebViewLayout"
-                 android:layout_marginTop="30sp"
+                 android:layout_marginTop="10sp"
         />
 
     </LinearLayout>

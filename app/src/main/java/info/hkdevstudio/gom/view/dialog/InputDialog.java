@@ -33,6 +33,7 @@ public class InputDialog extends Dialog {
         this.db = db;
         this.conf = conf;
         this.parent = context;
+
         radius = findViewById(R.id.dlg_input);
         apply_button = findViewById(R.id.apply);
         cancel_button = findViewById(R.id.cancel);

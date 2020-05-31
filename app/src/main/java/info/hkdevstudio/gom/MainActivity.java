@@ -29,6 +29,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import com.google.android.gms.ads.AdRequest;
+import com.google.android.gms.ads.AdView;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.snackbar.Snackbar;
 import com.sothree.slidinguppanel.SlidingUpPanelLayout;
@@ -64,6 +66,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
     String[] REQUIRED_PERMISSIONS  = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
     GpsTracker gpsTracker;
 
+    private AdView mAdView;
     private View mLayout;
 
     Configuration conf;
@@ -77,8 +80,9 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
     ImageButton searchButton;
     EditText searchKeyword;
 
-    TextView detailTitle;
     WebView webView;
+    ProgressBar webViewProgress;
+    ImageButton webView_cancel;
     WebSettings mWebSettings;
     List<MapPOIItem> placeList = new ArrayList<>();
 
@@ -88,6 +92,10 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         super.onCreate(savedInstanceState);
         //main 화면 시작
         setContentView(R.layout.activity_main);
+        //광고 코드
+        mAdView = findViewById(R.id.adView);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mAdView.loadAd(adRequest);
         //버튼 및 레이아웃 세팅
         mLayout = findViewById(R.id.layout_main);
         randomChoiceButton = findViewById(R.id.choose_button);
@@ -113,12 +121,9 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
             public void onPanelStateChanged(View panel, SlidingUpPanelLayout.PanelState previousState, SlidingUpPanelLayout.PanelState newState) {
 
             }
-
-
         });
-
+        webViewProgress = findViewById(R.id.web_view_progressBar);
         webView = findViewById(R.id.detail_web_view);
-
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -157,6 +162,17 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
                     return super.shouldOverrideUrlLoading(view, request);
                 }
             }
+
+// 페이지 로딩 시작시 호출
+            @Override
+            public void onPageStarted(WebView view,String url , Bitmap favicon){
+                webViewProgress.setVisibility(View.VISIBLE);
+            }
+//페이지 로딩 종료시 호출
+            public void onPageFinished(WebView view,String Url){
+                webViewProgress.setVisibility(View.GONE);
+            }
+
         });// 클릭시 새창 안뜨게
         mWebSettings = webView.getSettings(); //세부 세팅 등록
         mWebSettings.setJavaScriptEnabled(true); // 웹페이지 자바스클비트 허용 여부
@@ -170,7 +186,15 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         mWebSettings.setCacheMode(WebSettings.LOAD_NO_CACHE); // 브라우저 캐시 허용 여부
         mWebSettings.setDomStorageEnabled(true); // 로컬저장소 허용 여부
 
-
+        webView_cancel = findViewById(R.id.web_view_close);
+        webView_cancel.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(slidingLayout.getPanelState() == SlidingUpPanelLayout.PanelState.EXPANDED){
+                    slidingLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
+                }
+            }
+        });
 
         searchButton = findViewById(R.id.search_button);
         searchKeyword = findViewById(R.id.search_keyword);
@@ -246,7 +270,6 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
             @Override
             public void onClick(View v) {
                 if(placeList!=null && placeList.size() > 0){
-                    //TODO placeList 에서 뽑기
                     long seed = System.currentTimeMillis();
                     Random random = new Random(seed);
                     final int index = random.nextInt(placeList.size()-1)+1;
@@ -273,10 +296,14 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
     public void selectMarker(String url){
         if(webView != null && url != null && !url.equals("")) {
             url = url.replaceAll("http", "https");
-            System.out.println("!@#!@# selectMarker : " + url);
+            //System.out.println("!@#!@# selectMarker : " + url);
+            webView.goBack();
+            webView.clearHistory();
             webView.loadUrl(url);
 
-            slidingLayout.setPanelState(SlidingUpPanelLayout.PanelState.EXPANDED);
+            if(slidingLayout.getPanelState() != SlidingUpPanelLayout.PanelState.EXPANDED) {
+                slidingLayout.setPanelState(SlidingUpPanelLayout.PanelState.EXPANDED);
+            }
         }
     }
 
@@ -551,7 +578,9 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
                         for (DocumentVo d : result.second) {
                             MapPOIItem subMarker = new MapPOIItem();
 
-                            if(d.getCategory_name().contains("간식")){
+                            if(d.getCategory_name().contains("간식")
+                                    ||d.getCategory_name().contains("카페")
+                                    ||d.getCategory_name().contains("커피")){
                                 continue;
                             }
 
@@ -601,7 +630,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         try {
             obj = new JSONObject(info);
             String url = obj.getString("place_url");
-            System.out.println("onPOIItemSeleted");
+            //System.out.println("onPOIItemSeleted");
             selectMarker(url);
         }catch (JSONException e){
             e.printStackTrace();
@@ -647,7 +676,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
                 super.onBackPressed();
             } else {
                 backPressedTime = tempTime;
-                Toast.makeText(getApplicationContext(), "한번 더 뒤로가기 누르면 꺼버린다.", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "종료하시려면 뒤로가기를 한번 더 눌러주세요.", Toast.LENGTH_SHORT).show();
             }
         }
     }

@@ -15,7 +15,8 @@
             android:layout_height="wrap_content"
             android:text="@string/app_name_first"
             android:fontFamily="@font/dangdang"
-            android:textColor="@color/pnt"
+            android:textStyle="bold|italic"
+            android:textColor="@color/white"
             android:background="@color/bck"
             android:textSize="90sp"
             
@@ -26,7 +27,8 @@
             android:layout_height="wrap_content"
             android:text="@string/app_name_second"
             android:fontFamily="@font/dangdang"
-            android:textColor="@color/pnt"
+            android:textStyle="bold|italic"
+            android:textColor="@color/white"
             android:background="@color/bck"
             android:textSize="90sp"
             

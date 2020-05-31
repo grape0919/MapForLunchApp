@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
+import com.google.android.gms.ads.MobileAds;
 import info.hkdevstudio.gom.MainActivity;
 import info.hkdevstudio.gom.R;
 
@@ -15,6 +16,7 @@ public class SplashActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
+        MobileAds.initialize(this);
         handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override

@@ -55,7 +55,6 @@ public class CustomBalloonAdapter implements CalloutBalloonAdapter {
 
     @Override
     public View getPressedCalloutBalloon(MapPOIItem mapPOIItem) {
-        //TODO 클릭 시 슬라이더 webView 보여주기
         //context.selectMarker(url);
         return mCalloutBalloon;
     }
