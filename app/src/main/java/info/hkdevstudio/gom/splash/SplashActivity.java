@@ -16,7 +16,6 @@ public class SplashActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
 
-        MobileAds.initialize(this);
         handler = new Handler();
         handler.postDelayed(new Runnable() {
             @Override

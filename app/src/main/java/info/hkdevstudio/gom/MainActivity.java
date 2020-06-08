@@ -31,6 +31,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdView;
+import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.material.snackbar.Snackbar;
 import com.sothree.slidinguppanel.SlidingUpPanelLayout;
@@ -93,6 +94,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         //main 화면 시작
         setContentView(R.layout.activity_main);
         //광고 코드
+        MobileAds.initialize(this);
         mAdView = findViewById(R.id.adView);
         AdRequest adRequest = new AdRequest.Builder().build();
         mAdView.loadAd(adRequest);
@@ -144,11 +146,12 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
                         Intent existPackage = getPackageManager().getLaunchIntentForPackage(intent.getPackage());
                         if (existPackage != null) {
                             startActivity(intent);
-                        } else {
-                            Intent marketIntent = new Intent(Intent.ACTION_VIEW);
-                            marketIntent.setData(Uri.parse("market://details?id="+intent.getPackage()));
-                            startActivity(marketIntent);
                         }
+//                        else {
+//                            Intent marketIntent = new Intent(Intent.ACTION_VIEW);
+//                            marketIntent.setData(Uri.parse("market://details?id="+intent.getPackage()));
+//                            startActivity(marketIntent);
+//                        }
                         return true;
                     }else{
                         return false;
@@ -297,7 +300,6 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         if(webView != null && url != null && !url.equals("")) {
             url = url.replaceAll("http", "https");
             //System.out.println("!@#!@# selectMarker : " + url);
-            webView.goBack();
             webView.clearHistory();
             webView.loadUrl(url);
 
@@ -663,11 +665,11 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
     @Override
     public void onBackPressed() {
         if(slidingLayout.getPanelState()==SlidingUpPanelLayout.PanelState.EXPANDED){
-            if(webView.canGoBack()){
-                webView.goBack();
-            }else {
+//            if(webView.canGoBack()){
+//                webView.goBack();
+//            }else {
                 slidingLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
-            }
+//            }
         }else {
             long tempTime = System.currentTimeMillis();
             long intervalTime = tempTime - backPressedTime;
