@@ -1,5 +1,6 @@
 package info.hkdevstudio.gom.handler;
 
+import android.os.AsyncTask;
 import android.util.Log;
 import android.util.Pair;
 import info.hkdevstudio.gom.vo.DocumentVo;
@@ -15,7 +16,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
-public class RestApiHandler {
+public class RestApiHandler extends AsyncTask {
 
     final static String REST_API_KEY = "61273287a5a93b183d1e0525f734e787";
 
@@ -103,4 +104,12 @@ public class RestApiHandler {
         return result;
     }
 
+    @Override
+    protected Object doInBackground(Object[] objects) {
+        for(Object o : objects){
+
+        }
+
+        return null;
+    }
 }

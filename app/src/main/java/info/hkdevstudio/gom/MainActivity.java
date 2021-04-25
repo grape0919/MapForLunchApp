@@ -93,17 +93,20 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         super.onCreate(savedInstanceState);
         //main 화면 시작
         setContentView(R.layout.activity_main);
-        //광고 코드
-        MobileAds.initialize(this);
-        mAdView = findViewById(R.id.adView);
-        AdRequest adRequest = new AdRequest.Builder().build();
-        mAdView.loadAd(adRequest);
+
         //버튼 및 레이아웃 세팅
         mLayout = findViewById(R.id.layout_main);
         randomChoiceButton = findViewById(R.id.choose_button);
         myLocation = findViewById(R.id.renew_my_location);
         radius = findViewById(R.id.radius);
 
+        //광고 코드
+        Log.d("DEBUG","광고로드 시작");
+        MobileAds.initialize(this, getString(R.string.admob_app_id));
+        mAdView = findViewById(R.id.adView);
+        AdRequest adRequest = new AdRequest.Builder().build();
+        mAdView.loadAd(adRequest);
+        Log.d("DEBUG","광고로드 끝");
         //detailTitle = findViewById(R.id.detail_title);
         //
         // detailTitle.setText("TEST");
@@ -201,7 +204,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
 
         searchButton = findViewById(R.id.search_button);
         searchKeyword = findViewById(R.id.search_keyword);
-        searchKeyword.setText("맛집");
+        //searchKeyword.setText("맛집");
 
         gpsTracker = new GpsTracker(this);
 
@@ -272,22 +275,24 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         randomChoiceButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(placeList!=null && placeList.size() > 0){
-                    long seed = System.currentTimeMillis();
-                    Random random = new Random(seed);
-                    final int index = random.nextInt(placeList.size()-1)+1;
-                    Handler handler = new Handler();
-                    handler.postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            if(Arrays.asList(mapView.getPOIItems()).equals(placeList)){
-                                mapView.selectPOIItem(placeList.get(index), true);
-                                onPOIItemSelected(mapView, placeList.get(index));
-                            }else{
-                                Toast.makeText(MainActivity.this, "아직 맛집을 모두 불러오지 못했어요!", Toast.LENGTH_LONG).show();
+                synchronized (placeList) {
+                    if (placeList != null && placeList.size() > 0) {
+                        long seed = System.currentTimeMillis();
+                        Random random = new Random(seed);
+                        final int index = random.nextInt(placeList.size() - 1) + 1;
+                        Handler handler = new Handler();
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (Arrays.asList(mapView.getPOIItems()).equals(placeList)) {
+                                    mapView.selectPOIItem(placeList.get(index), true);
+                                    onPOIItemSelected(mapView, placeList.get(index));
+                                } else {
+                                    Toast.makeText(MainActivity.this, "아직 맛집을 모두 불러오지 못했어요!", Toast.LENGTH_LONG).show();
+                                }
                             }
-                        }
-                    }, 300);
+                        }, 300);
+                    }
                 }
             }
         });
@@ -526,7 +531,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
     }
 
     public void renewLocation(){
-
+        Log.d("DEBUG","renewLocation 시작");
         if(hasPermission()) {
             gpsTracker.getLocation();
             final double latitude = gpsTracker.getLatitude();
@@ -565,6 +570,8 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
 
                     mapView.addPOIItem(marker);
                     placeList.add(marker);
+
+                    RestApiHandler apiHandler = new RestApiHandler();
                     do {
                         RequestParam msg = new RequestParam();
                         msg.setY(latitude);
@@ -577,14 +584,15 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
                         Pair<MetaVo, List<DocumentVo>> result = RestApiHandler.getApi(msg.toString());
                         is_end = result.first.getIs_end();
 
+                        
                         for (DocumentVo d : result.second) {
                             MapPOIItem subMarker = new MapPOIItem();
 
-                            if(d.getCategory_name().contains("간식")
-                                    ||d.getCategory_name().contains("카페")
-                                    ||d.getCategory_name().contains("커피")){
-                                continue;
-                            }
+//                            if(d.getCategory_name().contains("간식")
+//                                    ||d.getCategory_name().contains("카페")
+//                                    ||d.getCategory_name().contains("커피")){
+//                                continue;
+//                            }
 
                             String itemDetail = d.toJson();
 
@@ -600,7 +608,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
                             subMarker.setCustomImageBitmap(subMarkerImg);
 
                             subMarker.setSelectedMarkerType(MapPOIItem.MarkerType.CustomImage);
-                            Bitmap selectedMarkerImg = GomStaticUtil.getBitmapFromVectorDrawable(MainActivity.this, R.drawable.marker_pupleblue);
+                            Bitmap selectedMarkerImg = GomStaticUtil.getBitmapFromVectorDrawable(MainActivity.this, R.drawable.marker_litemint);
                             subMarker.setCustomSelectedImageBitmap(selectedMarkerImg);
 
                             subMarker.setCustomImageAutoscale(false);
@@ -616,6 +624,7 @@ public class MainActivity extends Activity implements MapView.POIItemEventListen
         }else{
             setDefaultLocation();
         }
+        Log.d("DEBUG","renewLocation 끝");
     }
 
     @Override

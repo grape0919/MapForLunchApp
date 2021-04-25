@@ -22,32 +22,42 @@
             >
 
 
-        <LinearLayout android:id="@+id/search_view" android:layout_width="match_parent" android:layout_height="40sp"
+        <LinearLayout android:id="@+id/search_view" android:layout_width="match_parent" android:layout_height="30sp"
                       android:orientation="horizontal" android:background="@color/button_bck"
                       android:gravity="center" android:layout_alignParentTop="true">
+
+            <EditText android:id="@+id/search_keyword"
+                      android:layout_width="300sp" android:layout_height="25sp"
+                      android:background="@color/button_bck_dark"
+                      android:layout_marginTop="3sp"
+                      android:layout_marginBottom="3sp"
+                      android:layout_marginStart="10sp"
+                      android:layout_marginLeft="10sp" android:layout_marginRight="5sp"
+                      android:paddingLeft="10sp"
+                      android:textColor="@color/button_txt"
+                      android:hint="메뉴 검색창"
+                      android:textSize="15sp"
+                      android:textColorHighlight="@color/pnt"
+                      android:singleLine="true" android:maxLength="20" android:imeOptions="actionSearch"
+            />
 
             <ImageButton android:id="@+id/search_button" android:layout_width="wrap_content"
                          android:layout_height="wrap_content"
                          android:background="@drawable/button_selector" android:tint="@drawable/button_selector"
                          android:src="@drawable/ic_search_black_24dp"
-                         android:layout_marginLeft="10sp" android:layout_marginStart="10sp"/>
-
-            <EditText android:id="@+id/search_keyword"
-                      android:layout_width="300sp" android:layout_height="match_parent"
-                      android:background="@color/button_bck_dark"
-                      android:layout_marginTop="3sp"
-                      android:layout_marginBottom="3sp"
-                      android:layout_marginStart="10sp"
-                      android:layout_marginLeft="10sp" android:layout_marginRight="10sp"
-                      android:paddingLeft="10sp"
-                      android:textColor="@color/button_txt"
-                      android:text="맛집"
-                      android:textColorHighlight="@color/pnt"
-                      android:singleLine="true" android:maxLength="20" android:imeOptions="actionSearch"
-            />
-
+                         android:layout_marginLeft="5sp" android:layout_marginStart="5sp"/>
         </LinearLayout>
 
+        <com.google.android.gms.ads.AdView
+                xmlns:ads="http://schemas.android.com/apk/res-auto"
+                android:id="@+id/adView"
+                android:layout_below="@id/search_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                ads:adSize="BANNER"
+                android:layout_gravity="center"
+                ads:adUnitId="@string/banner_ad_unit_id"/>
 
         <RelativeLayout
                 android:id="@+id/map_view"
@@ -71,7 +81,8 @@
                      android:tint="@drawable/button_selector"
 
                      android:layout_alignParentRight="true" android:layout_above="@id/renew_my_location"
-                     android:layout_alignParentEnd="true" android:contentDescription="@string/describe_radius"/>
+                     android:layout_alignParentEnd="true" android:contentDescription="@string/describe_radius"
+        />
 
         <ImageButton android:id="@+id/renew_my_location" android:layout_width="40sp"
                      android:layout_height="40sp"
@@ -86,17 +97,6 @@
                      android:layout_alignParentRight="true" android:layout_above="@id/choose_button"
                      android:layout_alignParentEnd="true" android:contentDescription="@string/describe_my_location"/>
 
-        <com.google.android.gms.ads.AdView
-                xmlns:ads="http://schemas.android.com/apk/res-auto"
-                android:id="@+id/adView"
-                android:layout_below="@id/search_view"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                ads:adSize="BANNER"
-                android:layout_gravity="center"
-                ads:adUnitId="@string/banner_ad_unit_id"/>
-
         <Button android:id="@+id/choose_button" android:layout_width="match_parent" android:layout_height="wrap_content"
                 android:text="@string/draw_button_text" android:layout_alignParentBottom="true"
 
@@ -104,7 +104,7 @@
                 android:textColor="@drawable/button_selector"
 
                 android:fontFamily="@font/dangdang"
-                android:textSize="18sp"
+                android:textSize="15sp"
                 />
 
     </RelativeLayout>

@@ -13,3 +13,8 @@
 .externalNativeBuild
 .cxx
 *.xml
+dist/
+build/
+__pycache__/
+*/__pycache__/
+.vscode/
