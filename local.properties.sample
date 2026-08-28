@@ -1,0 +1,10 @@
+# 이 파일을 local.properties 로 복사하고 실제 값을 채우세요. local.properties 는 절대 커밋하지 않습니다.
+sdk.dir=/path/to/Android/sdk
+
+# 카카오 개발자 콘솔(https://developers.kakao.com)에서 재발급한 키
+KAKAO_NATIVE_APP_KEY=
+KAKAO_REST_API_KEY=
+
+# AdMob (비워두면 구글 테스트 광고 ID 사용)
+ADMOB_APP_ID=
+ADMOB_BANNER_ID=
