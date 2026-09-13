@@ -381,7 +381,8 @@ private fun ResultCard(
                 .padding(start = 18.dp, end = 18.dp, top = 18.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(verticalAlignment = Alignment.Top) {
+            Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                PlaceThumb(place = place, size = 64.dp, radius = 14.dp)
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(place.name, style = GomType.displayS, maxLines = 2)
                     val meta = buildString {
@@ -392,7 +393,6 @@ private fun ResultCard(
                 }
                 Box(
                     modifier = Modifier
-                        .padding(start = 8.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(PaprikaTint)
                         .padding(horizontal = 8.dp, vertical = 4.dp),

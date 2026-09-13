@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -192,6 +194,36 @@ fun RatingStars(rating: Int, starSize: Dp = 16.dp, gap: Dp = 1.dp, modifier: Mod
 @Composable
 fun EllipsisText(text: String, style: androidx.compose.ui.text.TextStyle, modifier: Modifier = Modifier, maxLines: Int = 1) {
     Text(text, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis, modifier = modifier)
+}
+
+/**
+ * 매장 대표 사진 썸네일. 플레이스 페이지 og:image를 지연 로드하고,
+ * 없으면 가게 이름 첫 글자 타일을 보여준다.
+ */
+@Composable
+fun PlaceThumb(place: Place, size: Dp, radius: Dp = 12.dp, modifier: Modifier = Modifier) {
+    val url by androidx.compose.runtime.produceState<String?>(initialValue = null, key1 = place.id) {
+        value = info.hkdevstudio.gom.data.PlaceImageRepository.thumbnail(place.id, place.placeUrl)
+    }
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(radius))
+            .background(Cream)
+            .border(1.dp, Sand, RoundedCornerShape(radius)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (url != null) {
+            coil.compose.AsyncImage(
+                model = url,
+                contentDescription = place.name,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Text(place.name.take(1), style = GomType.numeral.copy(color = Ink))
+        }
+    }
 }
 
 /** AdMob 320×50 배너. 룰렛 결과 상태에서만 사용. */

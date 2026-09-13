@@ -165,7 +165,10 @@ fun PlaceDetailScreen(
                         .joinToString(" · "),
                     style = GomType.bodyS.copy(color = PaprikaDeep),
                 )
-                Text(place.name, style = GomType.displayM)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(place.name, style = GomType.displayM, modifier = Modifier.weight(1f))
+                    PlaceThumb(place = place, size = 72.dp, radius = 16.dp)
+                }
                 val phone = place.phone.ifBlank { null }
                 Text(
                     listOfNotNull(place.address.ifBlank { null }, phone).joinToString("\n"),

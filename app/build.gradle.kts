@@ -88,4 +88,5 @@ dependencies {
     implementation(libs.play.services.location)
     implementation(libs.play.services.ads)
     implementation(libs.kakao.map)
+    implementation(libs.coil.compose)
 }

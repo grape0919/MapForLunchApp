@@ -87,7 +87,7 @@ import info.hkdevstudio.gom.util.LocationProvider
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 
-private val CardWidth = 236.dp
+private val CardWidth = 260.dp
 
 /** S1. 지도 홈 — 번호 핀 + 하단 카드 캐러셀 + 룰렛 단일 CTA. */
 @Composable
@@ -457,25 +457,30 @@ private fun PlaceCard(
             .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Paprika),
-                contentAlignment = Alignment.Center,
-            ) { Text("$index", style = GomType.badge.copy(color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) }
-            EllipsisText(place.name, GomType.titleM, modifier = Modifier.weight(1f))
-            Icon(
-                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                contentDescription = "즐겨찾기",
-                tint = if (isFavorite) Paprika else HeartOff,
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onToggleFavorite),
-            )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PlaceThumb(place = place, size = 52.dp, radius = 10.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(RoundedCornerShape(7.dp))
+                            .background(Paprika),
+                        contentAlignment = Alignment.Center,
+                    ) { Text("$index", style = GomType.badge.copy(color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) }
+                    EllipsisText(place.name, GomType.titleM, modifier = Modifier.weight(1f))
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                        contentDescription = "즐겨찾기",
+                        tint = if (isFavorite) Paprika else HeartOff,
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable(onClick = onToggleFavorite),
+                    )
+                }
+                Text(place.metaLine(), style = GomType.meta, maxLines = 1)
+            }
         }
-        Text(place.metaLine(), style = GomType.meta)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
