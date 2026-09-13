@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -143,7 +144,11 @@ fun RecordsScreen(
                     item { Text("아직 방문 기록이 없어요", style = GomType.bodyS.copy(color = Mute2), modifier = Modifier.padding(vertical = 24.dp)) }
                 }
                 items(visits, key = { it.visitId }) { visit ->
-                    VisitRecordRow(visit = visit, onClick = { editing = visit })
+                    VisitRecordRow(
+                        visit = visit,
+                        onClick = { onOpenPlace(visit.placeId) },
+                        onEdit = { editing = visit },
+                    )
                     HorizontalDivider(thickness = 1.dp, color = Sand)
                 }
             }
@@ -197,7 +202,7 @@ fun RecordsScreen(
             initialRating = visit.rating,
             initialNote = visit.note,
             onSave = { rating, note -> viewModel.updateVisit(visit.visitId, rating, note); editing = null },
-            onLater = { editing = null },
+            onCancel = { editing = null },
             onDelete = { viewModel.deleteVisit(visit); editing = null },
         )
     }
@@ -221,7 +226,7 @@ private fun TabLabel(text: String, selected: Boolean, onClick: () -> Unit) {
 }
 
 @Composable
-private fun VisitRecordRow(visit: VisitEntity, onClick: () -> Unit) {
+private fun VisitRecordRow(visit: VisitEntity, onClick: () -> Unit, onEdit: () -> Unit) {
     val day = remember(visit.visitedAt) { SimpleDateFormat("d", Locale.KOREAN).format(Date(visit.visitedAt)) }
     val weekday = remember(visit.visitedAt) { SimpleDateFormat("E", Locale.KOREAN).format(Date(visit.visitedAt)) }
     Row(
@@ -244,8 +249,16 @@ private fun VisitRecordRow(visit: VisitEntity, onClick: () -> Unit) {
             EllipsisText(
                 text = visit.note.ifBlank { "한 줄 남기기…" },
                 style = GomType.bodyS.copy(color = if (visit.note.isBlank()) Mute2 else Ink),
+                modifier = Modifier.clickable(onClick = onEdit),
             )
         }
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .clickable(onClick = onEdit),
+            contentAlignment = Alignment.Center,
+        ) { Icon(Icons.Rounded.Edit, contentDescription = "별점·메모 수정", tint = Mute, modifier = Modifier.size(18.dp)) }
     }
 }
 

@@ -74,7 +74,7 @@ fun CandidateSheet(
             .groupingBy { it.category }.eachCount()
             .toList().sortedBy { it.first }
     }
-    val candidateCount = viewModel.eligiblePlaces().take(MainViewModel.MAX_ROULETTE_CANDIDATES).size
+    val candidateCount = state.eligiblePlaces.size
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

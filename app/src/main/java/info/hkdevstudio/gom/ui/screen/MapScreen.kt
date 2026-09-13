@@ -108,8 +108,10 @@ fun MapScreen(
 
     var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
     var showCandidateSheet by remember { mutableStateOf(false) }
+    // 지도를 검색 중심에서 멀리 옮겼을 때만 "이 위치에서 재검색" 노출
+    var mapMovedAway by remember { mutableStateOf(false) }
 
-    val visible = remember(state.places, state.categoryFilter) { state.visiblePlaces }
+    val visible = remember(state.places, state.categoryFilter, state.favoritesOnly, state.favoriteIds) { state.visiblePlaces }
     val selectedIndex = visible.indexOfFirst { it.id == state.selectedPlaceId }.coerceAtLeast(0)
     val listState = rememberLazyListState()
 
@@ -129,15 +131,25 @@ fun MapScreen(
     }
 
     // 핀 렌더링: 목록/선택 변경 시
-    LaunchedEffect(kakaoMap, visible, selectedIndex, state.hasLocation, state.centerLat, state.centerLng) {
+    LaunchedEffect(kakaoMap, visible, selectedIndex, state.hasLocation, state.centerLat, state.centerLng, state.favoriteIds) {
         val map = kakaoMap ?: return@LaunchedEffect
-        val active = (selectedIndex - 1..selectedIndex + 1).mapNotNull { visible.getOrNull(it)?.id }.toSet()
         map.renderPlaceLabels(
             places = visible,
-            activeIds = active,
+            activeIds = setOfNotNull(visible.getOrNull(selectedIndex)?.id),
             density = density,
             me = if (state.hasLocation) state.centerLat to state.centerLng else null,
+            favoriteIds = state.favoriteIds,
         )
+    }
+
+    // 사용자가 지도를 끌어 검색 중심에서 벗어나면 재검색 버튼 노출
+    LaunchedEffect(kakaoMap, state.centerLat, state.centerLng) {
+        mapMovedAway = false
+        kakaoMap?.setOnCameraMoveEndListener { _, position, gesture ->
+            if (gesture == com.kakao.vectormap.GestureType.Unknown) return@setOnCameraMoveEndListener
+            val d = GeoUtils.distanceMeters(state.centerLat, state.centerLng, position.position.latitude, position.position.longitude)
+            mapMovedAway = d > 150
+        }
     }
 
     // 검색 중심이 바뀌면 카메라 이동
@@ -179,7 +191,7 @@ fun MapScreen(
         }
     }
     val excludedCount = state.excludedCategories.size + excludedPlaces.size
-    val candidateCount = viewModel.eligiblePlaces().take(MainViewModel.MAX_ROULETTE_CANDIDATES).size
+    val candidateCount = state.eligiblePlaces.size
 
     Box(modifier = Modifier.fillMaxSize().background(CreamMap)) {
         if (BuildConfig.KAKAO_NATIVE_APP_KEY.isBlank()) {
@@ -269,14 +281,20 @@ fun MapScreen(
             ) {
                 HomeChip(
                     text = "전체 ${state.places.size}",
-                    selected = state.categoryFilter == null,
-                    onClick = { viewModel.setCategoryFilter(null) },
+                    selected = state.categoryFilter.isEmpty(),
+                    onClick = { viewModel.toggleCategoryFilter(null) },
+                )
+                HomeChip(
+                    text = "♥ ${state.places.count { it.id in state.favoriteIds }}",
+                    selected = state.favoritesOnly,
+                    selectedColor = Paprika,
+                    onClick = viewModel::toggleFavoritesOnly,
                 )
                 categoryCounts.forEach { (category, count) ->
                     HomeChip(
                         text = "$category $count",
-                        selected = state.categoryFilter == category,
-                        onClick = { viewModel.setCategoryFilter(if (state.categoryFilter == category) null else category) },
+                        selected = category in state.categoryFilter,
+                        onClick = { viewModel.toggleCategoryFilter(category) },
                     )
                 }
                 Row(
@@ -290,7 +308,28 @@ fun MapScreen(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Icon(Icons.Rounded.Block, contentDescription = "후보 조정", tint = PaprikaDeep, modifier = Modifier.size(16.dp))
-                    Text("$excludedCount", style = GomType.bodyS.copy(color = PaprikaDeep))
+                    Text(if (excludedCount == 0) "이건 빼고" else "빼고 $excludedCount", style = GomType.bodyS.copy(color = PaprikaDeep))
+                }
+            }
+
+            if (mapMovedAway) {
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 10.dp)
+                        .shadow(6.dp, RoundedCornerShape(20.dp))
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Ink)
+                        .clickable {
+                            val center = kakaoMap?.cameraPosition?.position
+                            if (center != null) viewModel.searchAt(center.latitude, center.longitude) else viewModel.search()
+                        }
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Icon(Icons.Rounded.Refresh, contentDescription = null, tint = Cream, modifier = Modifier.size(16.dp))
+                    Text("이 위치에서 재검색", style = GomType.bodyS.copy(color = Cream, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium))
                 }
             }
         }
@@ -313,10 +352,6 @@ fun MapScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 CardIconButton(Icons.Rounded.MyLocation, "내 위치", onClick = viewModel::refreshFromMyLocation)
-                CardIconButton(Icons.Rounded.Refresh, "이 위치에서 재검색", onClick = {
-                    val center = kakaoMap?.cameraPosition?.position
-                    if (center != null) viewModel.searchAt(center.latitude, center.longitude) else viewModel.search()
-                })
             }
 
             if (state.searched && visible.isEmpty() && !state.loading) {
@@ -384,14 +419,14 @@ fun MapScreen(
 }
 
 @Composable
-private fun HomeChip(text: String, selected: Boolean, onClick: () -> Unit) {
+private fun HomeChip(text: String, selected: Boolean, onClick: () -> Unit, selectedColor: Color = Ink) {
     val shape = RoundedCornerShape(10.dp)
     Box(
         modifier = Modifier
             .height(32.dp)
             .clip(shape)
-            .background(if (selected) Ink else Color.White)
-            .border(1.5.dp, if (selected) Ink else Sand, shape)
+            .background(if (selected) selectedColor else Color.White)
+            .border(1.5.dp, if (selected) selectedColor else Sand, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,

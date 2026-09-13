@@ -56,6 +56,9 @@ private val QuickTags = listOf("웨이팅 있음", "양 많음", "혼밥 OK", "�
 
 /**
  * S8. 별점 시트. 결정 직후 자동 노출 + 매장 정보 CTA + 기록 행 수정에 공용.
+ * 버튼: [취소] [나중에] [기록 저장]
+ * @param onCancel 아무것도 남기지 않고 닫기
+ * @param onLater 별점 없이 방문만 기록(신규일 때만, null이면 숨김)
  * @param onDelete null이면 삭제 버튼 없음(신규 기록)
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,7 +70,8 @@ fun RatingSheet(
     initialRating: Int,
     initialNote: String,
     onSave: (rating: Int, note: String) -> Unit,
-    onLater: () -> Unit,
+    onCancel: () -> Unit,
+    onLater: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -78,7 +82,7 @@ fun RatingSheet(
     }
 
     ModalBottomSheet(
-        onDismissRequest = onLater,
+        onDismissRequest = onCancel,
         sheetState = sheetState,
         containerColor = Cream,
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -189,8 +193,13 @@ fun RatingSheet(
                     .fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                OutlinedCta(onClick = onLater, height = 56.dp, radius = 16.dp, background = Cream) {
-                    Text(if (onDelete == null) "나중에" else "취소")
+                OutlinedCta(onClick = onCancel, height = 56.dp, radius = 16.dp, background = Cream) {
+                    Text("취소")
+                }
+                if (onLater != null) {
+                    OutlinedCta(onClick = onLater, height = 56.dp, radius = 16.dp, background = Cream) {
+                        Text("나중에")
+                    }
                 }
                 FilledCta(
                     onClick = { onSave(rating, note.trim()) },

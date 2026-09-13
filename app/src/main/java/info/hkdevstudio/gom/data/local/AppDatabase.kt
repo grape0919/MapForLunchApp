@@ -11,6 +11,8 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "favorites")
@@ -35,6 +37,10 @@ data class VisitEntity(
     val visitedAt: Long = System.currentTimeMillis(),
     val rating: Int = 0,      // 0 = 미평가, 1~5
     val note: String = "",    // 나만의 한 줄 기록
+    // v2: 기록에서 매장 상세로 돌아갈 수 있도록 위치·주소 보존
+    val lat: Double = 0.0,
+    val lng: Double = 0.0,
+    val address: String = "",
 )
 
 @Entity(tableName = "excluded")
@@ -85,7 +91,7 @@ interface GomDao {
 
 @Database(
     entities = [FavoriteEntity::class, VisitEntity::class, ExcludedEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -95,13 +101,21 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var instance: AppDatabase? = null
 
+        private val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE visits ADD COLUMN lat REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE visits ADD COLUMN lng REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE visits ADD COLUMN address TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(context: Context): AppDatabase =
             instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "gom-v2.db",
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
     }
 }

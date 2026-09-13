@@ -33,17 +33,30 @@ data class MapUiState(
     val searched: Boolean = false,
     val places: List<Place> = emptyList(),
     val excludedCategories: Set<String> = emptySet(),
-    /** 홈 카테고리 칩(단일 선택). null = 전체 */
-    val categoryFilter: String? = null,
+    val excludedPlaceIds: Set<String> = emptySet(),
+    val favoriteIds: Set<String> = emptySet(),
+    /** 홈 카테고리 칩(복수 선택). 비어 있으면 전체 */
+    val categoryFilter: Set<String> = emptySet(),
+    /** 홈 ♥ 칩: 즐겨찾기만 보기 */
+    val favoritesOnly: Boolean = false,
     /** 카드 캐러셀 ↔ 지도 핀 동기화용 */
     val selectedPlaceId: String? = null,
-    /** 룰렛 후보(룰렛 화면 진입 시 확정) */
-    val rouletteCandidates: List<Place> = emptyList(),
+    /** 룰렛 전체 후보(필터 통과한 모든 곳) */
+    val roulettePool: List<Place> = emptyList(),
+    /** 이번 판 돌림판에 올라간 곳(≤ 8, pool에서 무작위) */
+    val rouletteWheel: List<Place> = emptyList(),
     val rouletteSource: RouletteSource = RouletteSource.Nearby,
 ) {
-    /** 카테고리 칩 필터를 적용한 목록(지도 핀·카드 번호 기준). */
+    /** 카테고리·즐겨찾기 칩 필터를 적용한 목록(지도 핀·카드 번호 기준). */
     val visiblePlaces: List<Place>
-        get() = if (categoryFilter == null) places else places.filter { it.category == categoryFilter }
+        get() = places.filter { p ->
+            (categoryFilter.isEmpty() || p.category in categoryFilter) &&
+                (!favoritesOnly || p.id in favoriteIds)
+        }
+
+    /** 룰렛 후보 = 보이는 목록 − 제외 카테고리 − 제외 가게 */
+    val eligiblePlaces: List<Place>
+        get() = visiblePlaces.filter { it.id !in excludedPlaceIds && it.category !in excludedCategories }
 
     companion object {
         // 위치 권한 거부 시 기본 좌표: 서울시청
@@ -80,6 +93,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             settings.excludedCategories.collect { categories ->
                 _state.update { it.copy(excludedCategories = categories) }
             }
+        }
+        viewModelScope.launch {
+            excludedPlaces.collect { list -> _state.update { it.copy(excludedPlaceIds = list.map { e -> e.id }.toSet()) } }
+        }
+        viewModelScope.launch {
+            favorites.collect { list -> _state.update { it.copy(favoriteIds = list.map { f -> f.id }.toSet()) } }
         }
     }
 
@@ -134,14 +153,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.search(query, current.centerLat, current.centerLng, current.radius)
                 .onSuccess { places ->
                     val sorted = places.sortedBy { it.distanceM ?: Int.MAX_VALUE }
-                    _state.update {
-                        it.copy(
+                    _state.update { s ->
+                        val next = s.copy(
                             loading = false,
                             searched = true,
                             places = sorted,
-                            categoryFilter = it.categoryFilter?.takeIf { f -> sorted.any { p -> p.category == f } },
-                            selectedPlaceId = sorted.firstOrNull()?.id,
+                            categoryFilter = s.categoryFilter.filter { f -> sorted.any { p -> p.category == f } }.toSet(),
                         )
+                        next.copy(selectedPlaceId = next.visiblePlaces.firstOrNull()?.id)
                     }
                 }
                 .onFailure { throwable ->
@@ -152,9 +171,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun setCategoryFilter(category: String?) {
+    /** 카테고리 칩 토글(복수 선택). null = 전체(모두 해제). */
+    fun toggleCategoryFilter(category: String?) {
         _state.update { s ->
-            val next = s.copy(categoryFilter = category)
+            val next = when {
+                category == null -> s.copy(categoryFilter = emptySet())
+                category in s.categoryFilter -> s.copy(categoryFilter = s.categoryFilter - category)
+                else -> s.copy(categoryFilter = s.categoryFilter + category)
+            }
+            next.copy(selectedPlaceId = next.visiblePlaces.firstOrNull()?.id)
+        }
+    }
+
+    fun toggleFavoritesOnly() {
+        _state.update { s ->
+            val next = s.copy(favoritesOnly = !s.favoritesOnly)
             next.copy(selectedPlaceId = next.visiblePlaces.firstOrNull()?.id)
         }
     }
@@ -173,62 +204,84 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------- 조회 ----------
 
-    /** 검색 결과 → 즐겨찾기 순으로 찾는다. 즐겨찾기는 현재 중심 기준 거리를 계산. */
+    /** 검색 결과 → 즐겨찾기 → 방문 기록 순으로 찾는다. */
     fun placeById(id: String): Place? =
-        _state.value.places.find { it.id == id } ?: favorites.value.find { it.id == id }?.toPlace()
+        _state.value.places.find { it.id == id }
+            ?: favorites.value.find { it.id == id }?.toPlace()
+            ?: visits.value.find { it.placeId == id }?.toPlace()
 
-    fun FavoriteEntity.toPlace(): Place {
+    private fun distanceFromCenter(lat: Double, lng: Double): Int? {
+        if (lat == 0.0 && lng == 0.0) return null
         val s = _state.value
-        return Place(
-            id = id, name = name, category = category, fullCategory = category,
-            phone = "", address = address, lat = lat, lng = lng, placeUrl = placeUrl,
-            distanceM = GeoUtils.distanceMeters(s.centerLat, s.centerLng, lat, lng).toInt(),
-        )
+        return GeoUtils.distanceMeters(s.centerLat, s.centerLng, lat, lng).toInt()
     }
+
+    fun FavoriteEntity.toPlace(): Place = Place(
+        id = id, name = name, category = category, fullCategory = category,
+        phone = "", address = address, lat = lat, lng = lng, placeUrl = placeUrl,
+        distanceM = distanceFromCenter(lat, lng),
+    )
+
+    private fun VisitEntity.toPlace(): Place = Place(
+        id = placeId, name = name, category = category, fullCategory = category,
+        phone = "", address = address, lat = lat, lng = lng, placeUrl = placeUrl,
+        distanceM = distanceFromCenter(lat, lng),
+    )
 
     fun isFavorite(placeId: String): Boolean = favorites.value.any { it.id == placeId }
     fun isExcluded(placeId: String): Boolean = excludedPlaces.value.any { it.id == placeId }
 
     // ---------- 룰렛 ----------
 
-    /** 제외 필터를 통과한 주변 후보(가까운 순). */
-    fun eligiblePlaces(): List<Place> {
-        val current = _state.value
-        val excludedIds = excludedPlaces.value.map { it.id }.toSet()
-        return current.places.filter { it.id !in excludedIds && it.category !in current.excludedCategories }
-    }
-
-    /** 후보 확정. 8곳 초과면 가까운 8곳(즐겨찾기 룰렛은 전체). 성공 시 true. */
+    /** 전체 후보를 확정하고 돌림판에 올릴 8곳을 무작위로 뽑는다. 성공 시 true. */
     fun startRoulette(source: RouletteSource = RouletteSource.Nearby): Boolean {
-        val candidates = when (source) {
-            RouletteSource.Nearby -> eligiblePlaces().take(MAX_ROULETTE_CANDIDATES)
-            RouletteSource.Favorites -> favorites.value.map { it.toPlace() }
+        val pool = when (source) {
+            RouletteSource.Nearby -> _state.value.eligiblePlaces
+            RouletteSource.Favorites -> favorites.value.map { it.toPlace() }.filter { it.id !in _state.value.excludedPlaceIds }
         }
-        if (candidates.isEmpty()) {
+        if (pool.isEmpty()) {
             _state.update { it.copy(error = "뽑을 후보가 없어요 — 제외 필터를 풀거나 반경을 늘려보세요") }
             return false
         }
-        _state.update { it.copy(rouletteCandidates = candidates, rouletteSource = source) }
+        _state.update {
+            it.copy(roulettePool = pool, rouletteWheel = pool.shuffled().take(WHEEL_SIZE), rouletteSource = source)
+        }
         return true
     }
 
-    /** 후보 조정 시트에서 바뀐 필터를 룰렛 후보에 다시 반영. */
+    /** "다시": 같은 후보군에서 돌림판 8곳을 다시 뽑는다. */
+    fun reshuffleWheel() {
+        _state.update { it.copy(rouletteWheel = it.roulettePool.shuffled().take(WHEEL_SIZE)) }
+    }
+
+    /** 후보 조정(제외/반경)이 바뀐 뒤 후보군과 돌림판을 다시 계산. */
     fun refreshRouletteCandidates() {
-        if (_state.value.rouletteSource == RouletteSource.Nearby) {
-            _state.update { it.copy(rouletteCandidates = eligiblePlaces().take(MAX_ROULETTE_CANDIDATES)) }
+        _state.update { s ->
+            val pool = when (s.rouletteSource) {
+                RouletteSource.Nearby -> s.eligiblePlaces
+                RouletteSource.Favorites -> favorites.value.map { it.toPlace() }.filter { it.id !in s.excludedPlaceIds }
+            }
+            // 이미 돌림판에 있던 곳은 유지하고 빠진 곳만 채운다
+            val kept = s.rouletteWheel.filter { w -> pool.any { it.id == w.id } }
+            val fill = pool.filter { p -> kept.none { it.id == p.id } }.shuffled().take(WHEEL_SIZE - kept.size)
+            s.copy(roulettePool = pool, rouletteWheel = kept + fill)
         }
     }
 
     // ---------- 제외 ----------
 
     fun toggleExcludeCategory(category: String) {
-        viewModelScope.launch { settings.toggleExcludedCategory(category) }
+        viewModelScope.launch {
+            settings.toggleExcludedCategory(category)
+            refreshRouletteCandidates()
+        }
     }
 
     fun resetExclusions() {
         viewModelScope.launch {
             settings.clearExcludedCategories()
             dao.clearExcluded()
+            refreshRouletteCandidates()
         }
     }
 
@@ -236,11 +289,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             if (isExcluded(place.id)) dao.include(place.id)
             else dao.exclude(ExcludedEntity(id = place.id, name = place.name))
+            refreshRouletteCandidates()
         }
     }
 
     fun includePlace(id: String) {
-        viewModelScope.launch { dao.include(id) }
+        viewModelScope.launch {
+            dao.include(id)
+            refreshRouletteCandidates()
+        }
     }
 
     // ---------- 즐겨찾기 ----------
@@ -266,10 +323,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------- 방문 기록 ----------
 
-    /** 방문 기록 생성(별점 미입력). 생성된 visitId 반환. */
-    suspend fun recordVisit(place: Place): Long =
+    /** 방문 기록 생성. 생성된 visitId 반환. */
+    suspend fun recordVisit(place: Place, rating: Int = 0, note: String = ""): Long =
         dao.addVisit(
-            VisitEntity(placeId = place.id, name = place.name, category = place.category, placeUrl = place.placeUrl)
+            VisitEntity(
+                placeId = place.id, name = place.name, category = place.category, placeUrl = place.placeUrl,
+                rating = rating.coerceIn(0, 5), note = note.take(MAX_NOTE_LENGTH),
+                lat = place.lat, lng = place.lng, address = place.address,
+            )
         )
 
     fun updateVisit(visitId: Long, rating: Int, note: String) {
@@ -280,10 +341,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch { dao.deleteVisit(visit) }
     }
 
-    fun visitsOf(placeId: String): List<VisitEntity> = visits.value.filter { it.placeId == placeId }
-
     companion object {
-        const val MAX_ROULETTE_CANDIDATES = 8
+        const val WHEEL_SIZE = 8
         const val MAX_NOTE_LENGTH = 40
     }
 }

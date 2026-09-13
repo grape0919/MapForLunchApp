@@ -6,11 +6,14 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,13 +25,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -36,7 +43,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,13 +56,13 @@ import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -68,8 +74,6 @@ import info.hkdevstudio.gom.ui.theme.GomType
 import info.hkdevstudio.gom.ui.theme.Ink
 import info.hkdevstudio.gom.ui.theme.Ink2
 import info.hkdevstudio.gom.ui.theme.Mute
-import info.hkdevstudio.gom.ui.theme.Paprika
-import info.hkdevstudio.gom.ui.theme.PaprikaDeep
 import info.hkdevstudio.gom.ui.theme.PaprikaLight
 import info.hkdevstudio.gom.ui.theme.PaprikaTint
 import info.hkdevstudio.gom.ui.theme.RoulettePalette
@@ -77,16 +81,24 @@ import info.hkdevstudio.gom.ui.theme.Sand
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.random.Random
 
 private const val SPIN_MS_PER_REV = 900
-private const val MIN_SPIN_MS = 1_500L
 private const val DECEL_MS = 3_000
 
-/** S2(회전 중) / S3(결과). 전면 화면. */
+private sealed interface Phase {
+    data object Idle : Phase
+    data object Spinning : Phase
+    data class Result(val place: Place) : Phase
+}
+
+/**
+ * S2(대기 → 회전 중) / S3(결과). 전면 화면.
+ * 흐름: 돌림판 확인·후보 빼기 → "돌리기" → 회전 → "멈추기"(또는 화면 탭) → 결과.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RouletteScreen(
     viewModel: MainViewModel,
@@ -96,63 +108,54 @@ fun RouletteScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val visits by viewModel.visits.collectAsState()
-    val candidates = state.rouletteCandidates
+    val wheel = state.rouletteWheel
     val haptic = LocalHapticFeedback.current
 
-    var winner by remember { mutableStateOf<Place?>(null) }
-    var spinKey by remember { mutableIntStateOf(0) }
-    var skip by remember { mutableStateOf(false) }
+    var phase by remember { mutableStateOf<Phase>(Phase.Idle) }
+    var stopRequested by remember { mutableStateOf(false) }
     var showCandidateSheet by remember { mutableStateOf(false) }
     val rotation = remember { Animatable(0f) }
 
-    LaunchedEffect(candidates.isEmpty()) { if (candidates.isEmpty()) onClose() }
+    LaunchedEffect(wheel.isEmpty()) { if (wheel.isEmpty()) onClose() }
 
-    // 회전 → 감속 정지. 탭(skip)이면 즉시 최종 각도로.
-    LaunchedEffect(spinKey, candidates) {
-        if (candidates.isEmpty()) return@LaunchedEffect
-        winner = null
-        skip = false
-        val index = Random.nextInt(candidates.size)
-        val sector = 360f / candidates.size
+    // 회전: "멈추기"/탭 전까지 무한 회전 → 감속 정지
+    LaunchedEffect(phase) {
+        if (phase != Phase.Spinning || wheel.isEmpty()) return@LaunchedEffect
+        stopRequested = false
+        val index = Random.nextInt(wheel.size)
+        val sector = 360f / wheel.size
         val finalAngle = 360f - (index * sector + sector / 2f)
 
-        rotation.snapTo(0f)
         val spinJob = launch {
             while (true) rotation.animateTo(rotation.value + 360f, tween(SPIN_MS_PER_REV, easing = LinearEasing))
         }
-        withTimeoutOrNull(MIN_SPIN_MS) { snapshotFlow { skip }.first { it } }
+        snapshotFlow { stopRequested }.first { it }
         spinJob.cancel()
         spinJob.join()
 
         val target = (ceil(rotation.value / 360f) + 2f) * 360f + finalAngle
-        if (!skip) {
-            val decel = launch {
-                rotation.animateTo(target, tween(DECEL_MS, easing = CubicBezierEasing(0.1f, 0.75f, 0.15f, 1f)))
-            }
-            val skipWatch = launch { snapshotFlow { skip }.first { it }; decel.cancel() }
-            decel.join()
-            skipWatch.cancel()
-        }
+        rotation.animateTo(target, tween(DECEL_MS, easing = CubicBezierEasing(0.1f, 0.75f, 0.15f, 1f)))
         rotation.snapTo(target)
         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-        winner = candidates[index]
+        phase = Phase.Result(wheel[index])
     }
 
     // 섹터 경계 통과 시 light tick
-    LaunchedEffect(candidates.size) {
-        if (candidates.isEmpty()) return@LaunchedEffect
-        val sector = 360f / candidates.size
+    LaunchedEffect(wheel.size) {
+        if (wheel.isEmpty()) return@LaunchedEffect
+        val sector = 360f / wheel.size
         snapshotFlow { floor(((rotation.value % 360f) + 360f) % 360f / sector).toInt() }
             .distinctUntilChanged()
-            .collect { if (winner == null) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+            .collect { if (phase == Phase.Spinning) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
     }
 
-    val spinning = winner == null
+    val spinning = phase == Phase.Spinning
     val excludedLabel = state.excludedCategories.take(2).joinToString("·")
-    val chipText = when {
-        state.rouletteSource == RouletteSource.Favorites -> "즐겨찾기 ${candidates.size}곳"
-        excludedLabel.isNotBlank() -> "후보 ${candidates.size}곳 · $excludedLabel 빼고"
-        else -> "후보 ${candidates.size}곳"
+    val poolText = if (state.rouletteSource == RouletteSource.Favorites) "즐겨찾기 ${state.roulettePool.size}곳" else "후보 ${state.roulettePool.size}곳"
+    val chipText = buildString {
+        append(poolText)
+        if (state.roulettePool.size > wheel.size) append(" · 이번 판 ${wheel.size}")
+        if (excludedLabel.isNotBlank()) append(" · $excludedLabel 빼고")
     }
 
     Box(
@@ -163,7 +166,7 @@ fun RouletteScreen(
                 if (spinning) Modifier.clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                ) { skip = true } else Modifier
+                ) { stopRequested = true } else Modifier
             ),
     ) {
         Column(
@@ -192,97 +195,153 @@ fun RouletteScreen(
                         .height(32.dp)
                         .clip(RoundedCornerShape(10.dp))
                         .background(Cream.copy(alpha = 0.12f))
-                        .clickable(enabled = state.rouletteSource == RouletteSource.Nearby) { showCandidateSheet = true }
+                        .clickable(enabled = !spinning) { showCandidateSheet = true }
                         .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    if (state.rouletteSource == RouletteSource.Nearby) {
-                        Icon(Icons.Rounded.Tune, contentDescription = null, tint = Cream, modifier = Modifier.size(16.dp))
-                    }
-                    Text(chipText, style = GomType.bodyS.copy(color = Cream))
+                    Icon(Icons.Rounded.Tune, contentDescription = null, tint = Cream, modifier = Modifier.size(16.dp))
+                    Text(chipText, style = GomType.bodyS.copy(color = Cream), maxLines = 1)
                 }
             }
 
-            // 제목
-            Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 20.dp)) {
-                Text(
-                    buildAnnotatedString {
-                        withStyle(GomType.displayTitle.copy(color = Cream).toSpanStyle()) {
-                            append(if (spinning) "두구두구 " else "두구두구…\n")
-                        }
-                        withStyle(GomType.displayTitle.copy(color = PaprikaLight).toSpanStyle()) {
-                            append(if (spinning) "두구…" else "오늘 점심은")
-                        }
-                    },
-                    style = GomType.displayTitle,
-                )
-                if (spinning) {
-                    Spacer(Modifier.height(6.dp))
-                    Text("김대리가 고민 중입니다", style = GomType.body.copy(color = Cream.copy(alpha = 0.6f)))
-                }
-            }
-
-            // 휠
-            Box(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp),
-                contentAlignment = Alignment.TopCenter,
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState()),
             ) {
-                RouletteWheel(
-                    names = candidates.map { it.name },
-                    rotationDegrees = rotation.value,
-                    modifier = Modifier.size(320.dp),
-                )
-                // 포인터: 상단 중앙 30×32 Cream 역삼각형
-                Canvas(modifier = Modifier.width(30.dp).height(32.dp).offset(y = (-6).dp)) {
-                    val path = Path().apply {
-                        moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width / 2f, size.height); close()
+                // 제목
+                Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp)) {
+                    val (head, accent, sub) = when (phase) {
+                        Phase.Idle -> Triple("오늘 점심, ", "돌려볼까요?", "돌림판의 가게를 눌러 이번 판에서 뺄 수 있어요")
+                        Phase.Spinning -> Triple("두구두구 ", "두구…", "김대리가 고민 중입니다")
+                        is Phase.Result -> Triple("두구두구…\n", "오늘 점심은", null)
                     }
-                    drawPath(path, Cream)
+                    Text(
+                        buildAnnotatedString {
+                            withStyle(GomType.displayTitle.copy(color = Cream).toSpanStyle()) { append(head) }
+                            withStyle(GomType.displayTitle.copy(color = PaprikaLight).toSpanStyle()) { append(accent) }
+                        },
+                        style = GomType.displayTitle,
+                    )
+                    if (sub != null) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(sub, style = GomType.body.copy(color = Cream.copy(alpha = 0.6f)))
+                    }
                 }
+
+                // 휠
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp),
+                    contentAlignment = Alignment.TopCenter,
+                ) {
+                    RouletteWheel(
+                        names = wheel.map { it.name },
+                        rotationDegrees = rotation.value,
+                        modifier = Modifier.size(300.dp),
+                    )
+                    Canvas(modifier = Modifier.width(30.dp).height(32.dp).offset(y = (-6).dp)) {
+                        val path = Path().apply {
+                            moveTo(0f, 0f); lineTo(size.width, 0f); lineTo(size.width / 2f, size.height); close()
+                        }
+                        drawPath(path, Cream)
+                    }
+                }
+
+                // 대기 상태: 이번 판 후보 칩(탭 → 당분간 빼기)
+                if (phase == Phase.Idle) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, end = 16.dp, top = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        wheel.forEachIndexed { i, place ->
+                            Row(
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Cream.copy(alpha = 0.08f))
+                                    .border(1.dp, Cream.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+                                    .clickable { viewModel.toggleExcludePlace(place) }
+                                    .padding(start = 8.dp, end = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Box(
+                                    modifier = Modifier.size(10.dp).clip(CircleShape)
+                                        .background(RoulettePalette[i % RoulettePalette.size]),
+                                )
+                                Text(place.name, style = GomType.bodyS.copy(color = Cream), maxLines = 1)
+                                Icon(Icons.Rounded.Block, contentDescription = "당분간 빼기", tint = Cream.copy(alpha = 0.5f), modifier = Modifier.size(14.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
             }
 
-            Spacer(Modifier.weight(1f))
-
-            val result = winner
-            if (result == null) {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 16.dp)
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Cream.copy(alpha = 0.08f)),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Rounded.HourglassTop, contentDescription = null, tint = Cream.copy(alpha = 0.45f), modifier = Modifier.size(20.dp))
-                    Text("돌아가는 중…", style = GomType.button.copy(color = Cream.copy(alpha = 0.45f)))
+            // 하단
+            when (val p = phase) {
+                Phase.Idle -> {
+                    FilledCta(
+                        onClick = { phase = Phase.Spinning },
+                        height = 60.dp,
+                        radius = 18.dp,
+                        shadow = true,
+                        modifier = Modifier
+                            .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                            .fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Rounded.Casino, contentDescription = null, modifier = Modifier.size(26.dp))
+                        Text("돌림판 돌리기", style = GomType.numeral.copy(color = Cream, fontSize = 22.sp))
+                    }
                 }
-                Text(
-                    "화면을 탭하면 바로 멈춥니다",
-                    style = GomType.meta.copy(color = Cream.copy(alpha = 0.4f)),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 10.dp, bottom = 16.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                )
-            } else {
-                val placeVisits = visits.filter { it.placeId == result.id }
-                val rated = placeVisits.filter { it.rating > 0 }
-                val avg = if (rated.isEmpty()) null else rated.map { it.rating }.average()
-                ResultCard(
-                    place = result,
-                    visitCount = placeVisits.size,
-                    avgRating = avg,
-                    onRetry = { spinKey++ },
-                    onShowOnMap = { onShowOnMap(result) },
-                    onDecide = { onDecide(result) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-                AdBanner(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp))
+                Phase.Spinning -> {
+                    FilledCta(
+                        onClick = { stopRequested = true },
+                        background = Cream,
+                        contentColor = Ink,
+                        height = 56.dp,
+                        radius = 16.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .fillMaxWidth(),
+                    ) {
+                        Icon(Icons.Rounded.StopCircle, contentDescription = null, modifier = Modifier.size(22.dp))
+                        Text("멈추기")
+                    }
+                    Text(
+                        "화면을 탭해도 멈춥니다",
+                        style = GomType.meta.copy(color = Cream.copy(alpha = 0.4f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 16.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                is Phase.Result -> {
+                    val result = p.place
+                    val placeVisits = visits.filter { it.placeId == result.id }
+                    val rated = placeVisits.filter { it.rating > 0 }
+                    val avg = if (rated.isEmpty()) null else rated.map { it.rating }.average()
+                    ResultCard(
+                        place = result,
+                        visitCount = placeVisits.size,
+                        avgRating = avg,
+                        onRetry = {
+                            viewModel.reshuffleWheel()
+                            phase = Phase.Idle
+                        },
+                        onShowOnMap = { onShowOnMap(result) },
+                        onDecide = { onDecide(result) },
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                    AdBanner(modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp))
+                }
             }
         }
     }
@@ -293,7 +352,7 @@ fun RouletteScreen(
             onStart = {
                 showCandidateSheet = false
                 viewModel.refreshRouletteCandidates()
-                spinKey++
+                phase = Phase.Spinning
             },
             onDismiss = {
                 showCandidateSheet = false
@@ -432,7 +491,6 @@ fun RouletteWheel(
                 }
             }
         }
-        // 허브
         Box(
             modifier = Modifier
                 .size(72.dp)

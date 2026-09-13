@@ -104,13 +104,15 @@ fun KakaoMap.animateTo(lat: Double, lng: Double, zoom: Int? = null, durationMs: 
 
 /**
  * 번호 핀 + 내 위치 라벨을 다시 그린다.
- * @param activeIds Paprika 배경으로 강조할 place id 집합(카드 행에 보이는 3곳)
+ * @param activeIds Paprika 배경으로 강조할 place id(선택 카드)
+ * @param favoriteIds Ink 배경으로 구분할 즐겨찾기 id
  */
 fun KakaoMap.renderPlaceLabels(
     places: List<Place>,
     activeIds: Set<String>,
     density: Float,
     me: Pair<Double, Double>?,
+    favoriteIds: Set<String> = emptySet(),
 ) {
     val manager = labelManager ?: return
     val layer = manager.layer ?: return
@@ -119,7 +121,7 @@ fun KakaoMap.renderPlaceLabels(
     places.forEachIndexed { index, place ->
         val styles = manager.addLabelStyles(
             LabelStyles.from(
-                LabelStyle.from(MarkerBitmaps.numberedPin(index + 1, place.id in activeIds, density))
+                LabelStyle.from(MarkerBitmaps.numberedPin(index + 1, place.id in activeIds, density, favorite = place.id in favoriteIds))
                     .setZoomLevel(0)
             )
         )

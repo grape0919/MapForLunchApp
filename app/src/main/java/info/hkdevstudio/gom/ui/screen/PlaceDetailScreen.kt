@@ -198,7 +198,7 @@ fun PlaceDetailScreen(
                     .background(CreamMap)
                     .border(1.5.dp, Sand, RoundedCornerShape(18.dp)),
             ) {
-                if (BuildConfig.KAKAO_NATIVE_APP_KEY.isNotBlank()) {
+                if (BuildConfig.KAKAO_NATIVE_APP_KEY.isNotBlank() && place.lat != 0.0) {
                     val density = LocalDensity.current.density
                     KakaoMapView(
                         initialLat = place.lat,
@@ -295,12 +295,22 @@ fun PlaceDetailScreen(
             initialNote = existing?.note.orEmpty(),
             onSave = { rating, note ->
                 scope.launch {
-                    val id = if (target > 0) target else viewModel.recordVisit(place)
-                    viewModel.updateVisit(id, rating, note)
+                    if (target > 0) viewModel.updateVisit(target, rating, note)
+                    else viewModel.recordVisit(place, rating, note)
                 }
                 ratingTarget = null
             },
-            onLater = { ratingTarget = null },
+            // 취소: 새 기록이면 아무것도 남기지 않음. 룰렛에서 자동 생성된 기록이면 되돌림(삭제)
+            onCancel = {
+                if (existing != null && pendingVisitId == target) viewModel.deleteVisit(existing)
+                ratingTarget = null
+            },
+            // 나중에: 별점 없이 방문만 남김(룰렛 자동 기록은 이미 존재하므로 그대로 둠)
+            onLater = when {
+                target < 0 -> { { scope.launch { viewModel.recordVisit(place) }; ratingTarget = null } }
+                pendingVisitId == target -> { { ratingTarget = null } }
+                else -> null
+            },
             onDelete = if (existing != null && pendingVisitId != target) {
                 { viewModel.deleteVisit(existing); ratingTarget = null }
             } else null,

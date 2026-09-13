@@ -19,10 +19,11 @@ object MarkerBitmaps {
 
     /**
      * @param number 핀에 표시할 번호(1부터)
-     * @param active true → Paprika 배경/흰 숫자, false → 흰 배경/Ink 숫자
+     * @param active true → Paprika 배경/흰 숫자(선택), false → 흰 배경/Ink 숫자
+     * @param favorite 즐겨찾기(선택 아님) → Ink 배경/Cream 숫자로 구분
      * @param density dp → px 배율
      */
-    fun numberedPin(number: Int, active: Boolean, density: Float, typeface: Typeface? = null): Bitmap {
+    fun numberedPin(number: Int, active: Boolean, density: Float, favorite: Boolean = false, typeface: Typeface? = null): Bitmap {
         val body = 28f * density
         val pad = 6f * density                 // 그림자 + 회전 여유
         val size = (body * 1.45f + pad * 2).toInt()
@@ -48,7 +49,11 @@ object MarkerBitmaps {
         canvas.rotate(45f)
 
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (active) PAPRIKA else Color.WHITE
+            color = when {
+                active -> PAPRIKA
+                favorite -> INK
+                else -> Color.WHITE
+            }
             setShadowLayer(6f * density, 0f, 2f * density, 0x40_2A2420)
         }
         canvas.drawPath(path, fill)
@@ -64,7 +69,7 @@ object MarkerBitmaps {
         canvas.restore()
 
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = if (active) Color.WHITE else INK
+            color = if (active || favorite) Color.WHITE else INK
             textSize = 12f * density
             textAlign = Paint.Align.CENTER
             this.typeface = typeface ?: Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
