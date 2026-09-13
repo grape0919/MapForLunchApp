@@ -66,7 +66,10 @@ fun GomApp() {
 
     // 첫 실행 플래그 로드 전에는 크림 배경만(스플래시)
     val done = onboardingDone ?: run {
-        Box(Modifier.fillMaxSize().background(Cream))
+        // 스플래시: 첫 실행 플래그 로드 동안 워드마크
+        Box(Modifier.fillMaxSize().background(Cream), contentAlignment = androidx.compose.ui.Alignment.Center) {
+            info.hkdevstudio.gom.ui.screen.Wordmark()
+        }
         return
     }
     val start = if (done || LocationProvider.hasPermission(context)) Routes.MAP else Routes.ONBOARDING

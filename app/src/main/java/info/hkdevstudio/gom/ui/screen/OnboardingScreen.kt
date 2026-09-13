@@ -84,7 +84,7 @@ fun OnboardingScreen(
                 modifier = Modifier.padding(top = 72.dp, start = 28.dp, end = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                LogoTile(size = 56.dp, radius = 18.dp, fontSize = 24)
+                LogoTile(size = 56.dp, radius = 18.dp)
                 Text("오늘 점심,\n또 고민이죠?", style = GomType.displayL)
                 Text(
                     "김대리가 회사 근처 맛집을 모아 룰렛으로 골라드립니다. 먼저 주변을 찾을 수 있게 위치를 허용해 주세요.",

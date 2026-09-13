@@ -59,17 +59,31 @@ fun Place.metaLine(): String = listOfNotNull(
 
 // ---- 기본 요소 ----
 
-/** 로고 타일: Ink 배경 + Jua "밥" */
+/** 로고 타일: 배경(Ink 기본) + "밥" Jua 글리프(outline 벡터, 44dp 기준 Jua 18). */
 @Composable
-fun LogoTile(size: Dp = 44.dp, radius: Dp = 14.dp, fontSize: Int = 15) {
+fun LogoTile(size: Dp = 44.dp, radius: Dp = 14.dp, background: Color = Ink) {
     Box(
         modifier = Modifier
             .size(size)
             .clip(RoundedCornerShape(radius))
-            .background(Ink),
+            .background(background),
         contentAlignment = Alignment.Center,
     ) {
-        Text("밥", style = GomType.numeral.copy(color = Cream, fontSize = fontSize.sp, lineHeight = fontSize.sp))
+        Icon(
+            painter = androidx.compose.ui.res.painterResource(info.hkdevstudio.gom.R.drawable.ic_logo_glyph),
+            contentDescription = "김대리밥지도",
+            tint = Cream,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+/** 워드마크(스플래시): 타일 40dp Paprika + "김대리밥지도" Jua 30 Ink */
+@Composable
+fun Wordmark(modifier: Modifier = Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        LogoTile(size = 40.dp, radius = 12.dp, background = Paprika)
+        Text("김대리밥지도", style = GomType.displayS.copy(color = Ink))
     }
 }
 
