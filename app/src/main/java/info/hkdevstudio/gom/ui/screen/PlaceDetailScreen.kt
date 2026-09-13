@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.Comment
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -82,6 +83,7 @@ fun PlaceDetailScreen(
     pendingVisitId: Long?,
     onBack: () -> Unit,
     onOpenRecords: () -> Unit,
+    onOpenKakaoPage: (Place) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val favorites by viewModel.favorites.collectAsState()
@@ -230,6 +232,19 @@ fun PlaceDetailScreen(
                     Text("카카오맵에서 보기", style = GomType.meta.copy(color = Cream))
                     Icon(Icons.Rounded.OpenInNew, contentDescription = null, tint = Cream, modifier = Modifier.size(14.dp))
                 }
+            }
+
+            // 카카오 리뷰·사진 (플레이스 페이지를 앱 안 WebView로)
+            OutlinedCta(
+                onClick = { onOpenKakaoPage(place) },
+                height = 48.dp,
+                radius = 14.dp,
+                modifier = Modifier
+                    .padding(start = 24.dp, end = 24.dp, top = 12.dp)
+                    .fillMaxWidth(),
+            ) {
+                Icon(Icons.AutoMirrored.Rounded.Comment, contentDescription = null, modifier = Modifier.size(18.dp))
+                Text("카카오 리뷰 · 사진 보기")
             }
 
             // 내 한 줄 기록

@@ -25,6 +25,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import info.hkdevstudio.gom.ui.MainViewModel
+import info.hkdevstudio.gom.ui.screen.KakaoPlaceWebScreen
 import info.hkdevstudio.gom.ui.screen.MapScreen
 import info.hkdevstudio.gom.ui.screen.OnboardingScreen
 import info.hkdevstudio.gom.ui.screen.PlaceDetailScreen
@@ -54,6 +55,8 @@ private object Routes {
     const val RECORDS = "records"
     const val PLACE = "place/{placeId}?visitId={visitId}"
     fun place(placeId: String, visitId: Long? = null) = "place/$placeId?visitId=${visitId ?: -1L}"
+    const val WEB = "web/{placeId}?title={title}"
+    fun web(placeId: String, title: String) = "web/$placeId?title=${android.net.Uri.encode(title)}"
 }
 
 @Composable
@@ -138,6 +141,21 @@ fun GomApp() {
                 pendingVisitId = visitId,
                 onBack = { navController.popBackStack() },
                 onOpenRecords = { navController.navigate(Routes.RECORDS) },
+                onOpenKakaoPage = { place -> navController.navigate(Routes.web(place.id, place.name)) },
+            )
+        }
+        composable(
+            route = Routes.WEB,
+            arguments = listOf(
+                navArgument("placeId") { type = NavType.StringType },
+                navArgument("title") { type = NavType.StringType; defaultValue = "" },
+            ),
+        ) { entry ->
+            val placeId = entry.arguments?.getString("placeId").orEmpty()
+            KakaoPlaceWebScreen(
+                url = "https://place.map.kakao.com/$placeId",
+                title = entry.arguments?.getString("title").orEmpty(),
+                onBack = { navController.popBackStack() },
             )
         }
         composable(Routes.RECORDS) {
