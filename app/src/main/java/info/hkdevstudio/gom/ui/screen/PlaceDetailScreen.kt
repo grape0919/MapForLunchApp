@@ -67,6 +67,7 @@ import info.hkdevstudio.gom.ui.theme.PaprikaTint
 import info.hkdevstudio.gom.ui.theme.PaprikaTintBorder
 import info.hkdevstudio.gom.ui.theme.Sand
 import info.hkdevstudio.gom.util.GeoUtils
+import info.hkdevstudio.gom.util.ShareUtils
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -146,11 +147,9 @@ fun PlaceDetailScreen(
                 )
             }
             PlainIconButton(Icons.Rounded.Share, "공유") {
-                val send = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, "${place.name} · ${place.address}\n${kakaoMapUrl(place)}")
-                }
-                context.startActivity(Intent.createChooser(send, "공유"))
+                // 최근 별점·메모를 붙여 추천처럼 공유
+                val latest = placeVisits.firstOrNull { it.rating > 0 || it.note.isNotBlank() }
+                ShareUtils.sharePlace(context, place, latest?.rating ?: 0, latest?.note.orEmpty())
             }
         }
 

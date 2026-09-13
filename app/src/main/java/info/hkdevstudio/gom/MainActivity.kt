@@ -24,6 +24,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
+import info.hkdevstudio.gom.domain.Place
+import info.hkdevstudio.gom.util.ShareUtils
 import info.hkdevstudio.gom.ui.MainViewModel
 import info.hkdevstudio.gom.ui.screen.KakaoPlaceWebScreen
 import info.hkdevstudio.gom.ui.screen.MapScreen
@@ -53,7 +56,7 @@ private object Routes {
     const val MAP = "map"
     const val ROULETTE = "roulette"
     const val RECORDS = "records"
-    const val PLACE = "place/{placeId}?visitId={visitId}"
+    const val PLACE = "place/{placeId}?visitId={visitId}&n={n}&c={c}&a={a}&lat={lat}&lng={lng}"
     fun place(placeId: String, visitId: Long? = null) = "place/$placeId?visitId=${visitId ?: -1L}"
     const val WEB = "web/{placeId}?title={title}"
     fun web(placeId: String, title: String) = "web/$placeId?title=${android.net.Uri.encode(title)}"
@@ -131,10 +134,36 @@ fun GomApp() {
             arguments = listOf(
                 navArgument("placeId") { type = NavType.StringType },
                 navArgument("visitId") { type = NavType.LongType; defaultValue = -1L },
+                navArgument("n") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("c") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("a") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("lat") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("lng") { type = NavType.StringType; nullable = true; defaultValue = null },
+            ),
+            // 공유 링크: https://redbridgedev.ai.kr/place/{id}?n=..  /  gom://place/{id}?n=..
+            deepLinks = listOf(
+                navDeepLink { uriPattern = "https://${ShareUtils.LINK_HOST}/place/{placeId}?n={n}&c={c}&a={a}&lat={lat}&lng={lng}" },
+                navDeepLink { uriPattern = "https://${ShareUtils.LINK_HOST}/place/{placeId}" },
+                navDeepLink { uriPattern = "gom://place/{placeId}?n={n}&c={c}&a={a}&lat={lat}&lng={lng}" },
+                navDeepLink { uriPattern = "gom://place/{placeId}" },
             ),
         ) { entry ->
-            val placeId = entry.arguments?.getString("placeId").orEmpty()
-            val visitId = entry.arguments?.getLong("visitId")?.takeIf { it > 0 }
+            val args = entry.arguments
+            val placeId = args?.getString("placeId").orEmpty()
+            val visitId = args?.getLong("visitId")?.takeIf { it > 0 }
+            val linkedName = args?.getString("n")
+            if (!linkedName.isNullOrBlank()) {
+                viewModel.rememberExternalPlace(
+                    Place(
+                        id = placeId, name = linkedName,
+                        category = args.getString("c").orEmpty(), fullCategory = args.getString("c").orEmpty(),
+                        phone = "", address = args.getString("a").orEmpty(),
+                        lat = args.getString("lat")?.toDoubleOrNull() ?: 0.0,
+                        lng = args.getString("lng")?.toDoubleOrNull() ?: 0.0,
+                        placeUrl = "https://place.map.kakao.com/$placeId", distanceM = null,
+                    )
+                )
+            }
             PlaceDetailScreen(
                 viewModel = viewModel,
                 placeId = placeId,

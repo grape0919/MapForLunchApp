@@ -204,11 +204,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------- 조회 ----------
 
-    /** 검색 결과 → 즐겨찾기 → 방문 기록 순으로 찾는다. */
+    /** 공유 링크로 들어온 매장(검색 결과에 없어도 상세를 그리기 위해 보관). */
+    private val externalPlaces = mutableMapOf<String, Place>()
+
+    fun rememberExternalPlace(place: Place) {
+        externalPlaces[place.id] = place.copy(distanceM = distanceFromCenter(place.lat, place.lng))
+    }
+
+    /** 검색 결과 → 즐겨찾기 → 방문 기록 → 공유 링크 순으로 찾는다. */
     fun placeById(id: String): Place? =
         _state.value.places.find { it.id == id }
             ?: favorites.value.find { it.id == id }?.toPlace()
             ?: visits.value.find { it.placeId == id }?.toPlace()
+            ?: externalPlaces[id]
 
     private fun distanceFromCenter(lat: Double, lng: Double): Int? {
         if (lat == 0.0 && lng == 0.0) return null

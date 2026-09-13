@@ -35,6 +35,7 @@ import androidx.compose.material.icons.rounded.Casino
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.StopCircle
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Icon
@@ -374,6 +375,7 @@ private fun ResultCard(
     onDecide: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     Box(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -416,6 +418,13 @@ private fun ResultCard(
                 }
                 OutlinedCta(onClick = onShowOnMap, background = Cream, modifier = Modifier.width(48.dp)) {
                     Icon(Icons.Rounded.Map, contentDescription = "지도에서 보기", modifier = Modifier.size(20.dp))
+                }
+                OutlinedCta(
+                    onClick = { info.hkdevstudio.gom.util.ShareUtils.shareRouletteResult(context, place) },
+                    background = Cream,
+                    modifier = Modifier.width(48.dp),
+                ) {
+                    Icon(Icons.Rounded.Share, contentDescription = "공유", modifier = Modifier.size(20.dp))
                 }
                 FilledCta(onClick = onDecide, height = 48.dp, radius = 14.dp, modifier = Modifier.weight(1f)) {
                     Text("여기로 결정")
