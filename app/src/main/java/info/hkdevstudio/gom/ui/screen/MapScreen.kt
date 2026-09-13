@@ -1,102 +1,123 @@
 package info.hkdevstudio.gom.ui.screen
 
-import android.view.ViewGroup
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Casino
-import androidx.compose.material.icons.filled.FilterAlt
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Bookmark
+import androidx.compose.material.icons.rounded.BookmarkBorder
+import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.MyLocation
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.unit.sp
 import com.kakao.vectormap.KakaoMap
-import com.kakao.vectormap.KakaoMapReadyCallback
-import com.kakao.vectormap.LatLng
-import com.kakao.vectormap.MapLifeCycleCallback
-import com.kakao.vectormap.MapView
-import com.kakao.vectormap.camera.CameraUpdateFactory
-import com.kakao.vectormap.label.LabelOptions
-import com.kakao.vectormap.label.LabelStyle
-import com.kakao.vectormap.label.LabelStyles
 import info.hkdevstudio.gom.BuildConfig
 import info.hkdevstudio.gom.domain.Place
 import info.hkdevstudio.gom.ui.MainViewModel
+import info.hkdevstudio.gom.ui.theme.Cream
+import info.hkdevstudio.gom.ui.theme.CreamMap
+import info.hkdevstudio.gom.ui.theme.GomType
+import info.hkdevstudio.gom.ui.theme.HeartOff
+import info.hkdevstudio.gom.ui.theme.Ink
+import info.hkdevstudio.gom.ui.theme.Mute
+import info.hkdevstudio.gom.ui.theme.Mute2
+import info.hkdevstudio.gom.ui.theme.Paprika
+import info.hkdevstudio.gom.ui.theme.PaprikaDeep
+import info.hkdevstudio.gom.ui.theme.PaprikaTint
+import info.hkdevstudio.gom.ui.theme.Sand
+import info.hkdevstudio.gom.util.GeoUtils
 import info.hkdevstudio.gom.util.LocationProvider
-import info.hkdevstudio.gom.util.MarkerBitmaps
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val CardWidth = 236.dp
+
+/** S1. 지도 홈 — 번호 핀 + 하단 카드 캐러셀 + 룰렛 단일 CTA. */
 @Composable
 fun MapScreen(
     viewModel: MainViewModel,
     onOpenRecords: () -> Unit,
+    onOpenRoulette: () -> Unit,
+    onOpenPlace: (Place) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
     val favorites by viewModel.favorites.collectAsState()
+    val visits by viewModel.visits.collectAsState()
     val excludedPlaces by viewModel.excludedPlaces.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val density = LocalDensity.current.density
+    val focusManager = LocalFocusManager.current
 
     var kakaoMap by remember { mutableStateOf<KakaoMap?>(null) }
-    var showFilterSheet by remember { mutableStateOf(false) }
-    var showRadiusDialog by remember { mutableStateOf(false) }
+    var showCandidateSheet by remember { mutableStateOf(false) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        viewModel.refreshFromMyLocation()
-    }
+    val visible = remember(state.places, state.categoryFilter) { state.visiblePlaces }
+    val selectedIndex = visible.indexOfFirst { it.id == state.selectedPlaceId }.coerceAtLeast(0)
+    val listState = rememberLazyListState()
 
+    // 첫 진입 시 검색(권한 있으면 내 위치, 없으면 기본 좌표)
     LaunchedEffect(Unit) {
-        if (LocationProvider.hasPermission(context)) {
-            viewModel.refreshFromMyLocation()
-        } else {
-            permissionLauncher.launch(
-                arrayOf(
-                    android.Manifest.permission.ACCESS_FINE_LOCATION,
-                    android.Manifest.permission.ACCESS_COARSE_LOCATION,
-                )
-            )
+        if (!state.searched && !state.loading) {
+            if (LocationProvider.hasPermission(context)) viewModel.refreshFromMyLocation()
+            else viewModel.startAtDefaultLocation()
         }
     }
 
@@ -107,292 +128,349 @@ fun MapScreen(
         }
     }
 
-    // 지도에 마커 반영
-    LaunchedEffect(kakaoMap, state.places, state.hasLocation, state.centerLat, state.centerLng) {
+    // 핀 렌더링: 목록/선택 변경 시
+    LaunchedEffect(kakaoMap, visible, selectedIndex, state.hasLocation, state.centerLat, state.centerLng) {
         val map = kakaoMap ?: return@LaunchedEffect
-        updateLabels(map, state.places, state.centerLat, state.centerLng, state.hasLocation)
+        val active = (selectedIndex - 1..selectedIndex + 1).mapNotNull { visible.getOrNull(it)?.id }.toSet()
+        map.renderPlaceLabels(
+            places = visible,
+            activeIds = active,
+            density = density,
+            me = if (state.hasLocation) state.centerLat to state.centerLng else null,
+        )
     }
 
     // 검색 중심이 바뀌면 카메라 이동
     LaunchedEffect(kakaoMap, state.centerLat, state.centerLng) {
-        kakaoMap?.moveCamera(
-            CameraUpdateFactory.newCenterPosition(LatLng.from(state.centerLat, state.centerLng), 16)
-        )
+        kakaoMap?.animateTo(state.centerLat, state.centerLng, zoom = 16, durationMs = 300)
     }
 
-    // 선택된 장소로 카메라 이동
-    LaunchedEffect(state.selectedPlace) {
-        val place = state.selectedPlace ?: return@LaunchedEffect
-        kakaoMap?.moveCamera(
-            CameraUpdateFactory.newCenterPosition(LatLng.from(place.lat, place.lng), 17)
-        )
+    // 선택 카드 ↔ 카메라 + 캐러셀 위치 동기화
+    LaunchedEffect(state.selectedPlaceId, kakaoMap) {
+        val place = visible.getOrNull(selectedIndex) ?: return@LaunchedEffect
+        kakaoMap?.animateTo(place.lat, place.lng, durationMs = 300)
+        if (!listState.isScrollInProgress) {
+            val centered = listState.layoutInfo.visibleItemsInfo.minByOrNull { info ->
+                kotlin.math.abs(info.offset + info.size / 2 - listState.layoutInfo.viewportEndOffset / 2)
+            }?.index
+            if (centered != selectedIndex) listState.animateScrollToItem(selectedIndex)
+        }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    // 캐러셀 스크롤 정지 시 중앙 카드 = 선택
+    LaunchedEffect(listState, visible) {
+        snapshotFlow { listState.isScrollInProgress }
+            .distinctUntilChanged()
+            .filter { !it }
+            .collect {
+                val info = listState.layoutInfo
+                val center = (info.viewportStartOffset + info.viewportEndOffset) / 2
+                val nearest = info.visibleItemsInfo.minByOrNull { kotlin.math.abs(it.offset + it.size / 2 - center) }?.index
+                    ?: return@collect
+                visible.getOrNull(nearest)?.let { if (it.id != state.selectedPlaceId) viewModel.selectPlace(it.id) }
+            }
+    }
+
+    val categoryCounts by remember(state.places) {
+        derivedStateOf {
+            state.places.filter { it.category.isNotBlank() }
+                .groupingBy { it.category }.eachCount()
+                .toList().sortedByDescending { it.second }
+        }
+    }
+    val excludedCount = state.excludedCategories.size + excludedPlaces.size
+    val candidateCount = viewModel.eligiblePlaces().take(MainViewModel.MAX_ROULETTE_CANDIDATES).size
+
+    Box(modifier = Modifier.fillMaxSize().background(CreamMap)) {
         if (BuildConfig.KAKAO_NATIVE_APP_KEY.isBlank()) {
-            Surface(modifier = Modifier.fillMaxSize()) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = "카카오 네이티브 앱 키가 없어 지도를 표시할 수 없습니다.\nlocal.properties 에 KAKAO_NATIVE_APP_KEY 를 설정하세요.",
-                        modifier = Modifier.padding(32.dp),
-                    )
-                }
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Text(
+                    "카카오 네이티브 앱 키가 없어 지도를 표시할 수 없습니다.\nlocal.properties 에 KAKAO_NATIVE_APP_KEY 를 설정하세요.",
+                    style = GomType.body, textAlign = TextAlign.Center, modifier = Modifier.padding(32.dp),
+                )
             }
         } else {
             KakaoMapView(
+                initialLat = state.centerLat,
+                initialLng = state.centerLng,
                 onMapReady = { kakaoMap = it },
-                onLabelClick = { placeId ->
-                    viewModel.selectPlace(state.places.find { it.id == placeId })
-                },
+                onLabelClick = { id -> if (id != ME_TAG) viewModel.selectPlace(id) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
 
-        // 상단 검색 바
+        // ---- 상단: 바 + 카테고리 칩 ----
         Column(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .padding(WindowInsets.statusBars.asPaddingValues())
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .statusBarsPadding(),
         ) {
-            Surface(
-                shape = MaterialTheme.shapes.extraLarge,
-                tonalElevation = 3.dp,
-                shadowElevation = 4.dp,
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedTextField(
-                    value = state.keyword,
-                    onValueChange = viewModel::onKeywordChange,
-                    placeholder = { Text("검색어 (기본: 맛집)") },
-                    singleLine = true,
-                    leadingIcon = {
-                        IconButton(onClick = { showFilterSheet = true }) {
-                            Icon(Icons.Default.FilterAlt, contentDescription = "제외 필터")
-                        }
-                    },
-                    trailingIcon = {
-                        IconButton(onClick = viewModel::search) {
-                            Icon(Icons.Default.Search, contentDescription = "검색")
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth(),
+                LogoTile()
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color.White)
+                        .border(1.5.dp, Sand, RoundedCornerShape(14.dp))
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(Icons.Rounded.Search, contentDescription = "검색", tint = Mute, modifier = Modifier.size(20.dp))
+                    BasicTextField(
+                        value = state.keyword,
+                        onValueChange = viewModel::onKeywordChange,
+                        singleLine = true,
+                        textStyle = GomType.body.copy(color = Ink),
+                        cursorBrush = SolidColor(Paprika),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus(); viewModel.search() }),
+                        modifier = Modifier.weight(1f),
+                        decorationBox = { inner ->
+                            Box(contentAlignment = Alignment.CenterStart) {
+                                if (state.keyword.isEmpty()) {
+                                    Text(
+                                        buildAnnotatedString {
+                                            withStyle(GomType.body.copy(color = Ink).toSpanStyle()) { append("맛집") }
+                                            withStyle(GomType.body.copy(color = Mute2).toSpanStyle()) {
+                                                append(" · ${GeoUtils.radiusLabel(state.radius)}")
+                                            }
+                                        },
+                                        style = GomType.body,
+                                    )
+                                }
+                                inner()
+                            }
+                        },
+                    )
+                }
+                CardIconButton(
+                    icon = if (favorites.isEmpty()) Icons.Rounded.BookmarkBorder else Icons.Rounded.Bookmark,
+                    contentDescription = "내 기록",
+                    onClick = onOpenRecords,
                 )
             }
+
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 4.dp,
-                ) {
-                    TextButton(onClick = { showRadiusDialog = true }) {
-                        Text("반경 ${state.radius}m")
-                    }
+                HomeChip(
+                    text = "전체 ${state.places.size}",
+                    selected = state.categoryFilter == null,
+                    onClick = { viewModel.setCategoryFilter(null) },
+                )
+                categoryCounts.forEach { (category, count) ->
+                    HomeChip(
+                        text = "$category $count",
+                        selected = state.categoryFilter == category,
+                        onClick = { viewModel.setCategoryFilter(if (state.categoryFilter == category) null else category) },
+                    )
                 }
-                Surface(
-                    shape = MaterialTheme.shapes.extraLarge,
-                    tonalElevation = 3.dp,
-                    shadowElevation = 4.dp,
+                Row(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(PaprikaTint)
+                        .clickable { showCandidateSheet = true }
+                        .padding(horizontal = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    TextButton(onClick = {
-                        val center = kakaoMap?.cameraPosition?.position
-                        if (center != null) {
-                            viewModel.searchAt(center.latitude, center.longitude)
-                        } else {
-                            viewModel.search()
-                        }
-                    }) {
-                        Text("이 위치에서 재검색")
-                    }
+                    Icon(Icons.Rounded.Block, contentDescription = "후보 조정", tint = PaprikaDeep, modifier = Modifier.size(16.dp))
+                    Text("$excludedCount", style = GomType.bodyS.copy(color = PaprikaDeep))
                 }
             }
         }
 
         if (state.loading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            CircularProgressIndicator(color = Paprika, modifier = Modifier.align(Alignment.Center))
         }
 
-        // 우측 하단 컨트롤 + 룰렛 FAB + 광고
+        // ---- 하단: 플로팅 버튼 + 카드 캐러셀 + CTA ----
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .padding(WindowInsets.navigationBars.asPaddingValues()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .navigationBarsPadding(),
         ) {
-            Row(
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Bottom,
+                    .align(Alignment.End)
+                    .padding(end = 16.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FloatingActionButton(onClick = onOpenRecords) {
-                        Icon(Icons.AutoMirrored.Filled.List, contentDescription = "내 기록")
-                    }
-                    FloatingActionButton(onClick = viewModel::refreshFromMyLocation) {
-                        Icon(Icons.Default.MyLocation, contentDescription = "내 위치")
+                CardIconButton(Icons.Rounded.MyLocation, "내 위치", onClick = viewModel::refreshFromMyLocation)
+                CardIconButton(Icons.Rounded.Refresh, "이 위치에서 재검색", onClick = {
+                    val center = kakaoMap?.cameraPosition?.position
+                    if (center != null) viewModel.searchAt(center.latitude, center.longitude) else viewModel.search()
+                })
+            }
+
+            if (state.searched && visible.isEmpty() && !state.loading) {
+                EmptyCard(
+                    radius = state.radius,
+                    onExpand = { viewModel.setRadius(if (state.radius < 1000) 1000 else 2000) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            } else {
+                LazyRow(
+                    state = listState,
+                    flingBehavior = rememberSnapFlingBehavior(listState),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    itemsIndexed(visible, key = { _, p -> p.id }) { index, place ->
+                        val lastNote = visits.firstOrNull { it.placeId == place.id && it.note.isNotBlank() }?.note
+                        PlaceCard(
+                            index = index + 1,
+                            place = place,
+                            selected = index == selectedIndex,
+                            isFavorite = favorites.any { it.id == place.id },
+                            note = lastNote,
+                            onClick = { onOpenPlace(place) },
+                            onToggleFavorite = { viewModel.toggleFavorite(place) },
+                        )
                     }
                 }
-                ExtendedFloatingActionButton(
-                    onClick = viewModel::spin,
-                    icon = { Icon(Icons.Default.Casino, contentDescription = null) },
-                    text = { Text("골라줘 내 점심") },
-                )
             }
-            AdBanner(modifier = Modifier.fillMaxWidth())
+
+            FilledCta(
+                onClick = { if (viewModel.startRoulette()) onOpenRoulette() },
+                enabled = candidateCount > 0,
+                height = 60.dp,
+                radius = 18.dp,
+                shadow = true,
+                modifier = Modifier
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp)
+                    .fillMaxWidth(),
+            ) {
+                Icon(Icons.Rounded.Casino, contentDescription = null, modifier = Modifier.size(26.dp))
+                Text("골라줘 내 점심", style = GomType.numeral.copy(color = Cream, fontSize = 22.sp))
+                Text("후보 ${candidateCount}곳", style = GomType.meta.copy(color = Cream.copy(alpha = 0.85f)))
+            }
         }
 
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 120.dp),
-        ) { data -> Snackbar(snackbarData = data) }
+                .padding(bottom = 230.dp),
+        ) { data -> Snackbar(snackbarData = data, containerColor = Ink, contentColor = Cream) }
     }
 
-    state.selectedPlace?.let { place ->
-        PlaceDetailSheet(
-            place = place,
-            isFavorite = favorites.any { it.id == place.id },
-            isExcluded = excludedPlaces.any { it.id == place.id },
-            onToggleFavorite = { viewModel.toggleFavorite(place) },
-            onToggleExclude = { viewModel.toggleExcludePlace(place) },
-            onRecordVisit = { viewModel.recordVisit(place) },
-            onDismiss = { viewModel.selectPlace(null) },
-        )
-    }
-
-    state.rouletteCandidates?.let { candidates ->
-        RouletteDialog(
-            candidates = candidates,
-            onDecide = { place ->
-                viewModel.recordVisit(place)
-                viewModel.dismissRoulette()
-                viewModel.selectPlace(place)
+    if (showCandidateSheet) {
+        CandidateSheet(
+            viewModel = viewModel,
+            onStart = {
+                showCandidateSheet = false
+                if (viewModel.startRoulette()) onOpenRoulette()
             },
-            onShowOnMap = { place ->
-                viewModel.dismissRoulette()
-                viewModel.selectPlace(place)
-            },
-            onDismiss = viewModel::dismissRoulette,
-        )
-    }
-
-    if (showFilterSheet) {
-        FilterSheet(
-            categories = state.places.map { it.category }.filter { it.isNotBlank() }.distinct().sorted(),
-            excludedCategories = state.excludedCategories,
-            excludedPlaces = excludedPlaces,
-            onToggleCategory = viewModel::toggleExcludeCategory,
-            onIncludePlace = viewModel::includePlace,
-            onDismiss = { showFilterSheet = false },
-        )
-    }
-
-    if (showRadiusDialog) {
-        RadiusDialog(
-            radius = state.radius,
-            onConfirm = { radius ->
-                showRadiusDialog = false
-                viewModel.setRadius(radius)
-            },
-            onDismiss = { showRadiusDialog = false },
+            onDismiss = { showCandidateSheet = false },
         )
     }
 }
 
 @Composable
-private fun KakaoMapView(
-    onMapReady: (KakaoMap) -> Unit,
-    onLabelClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
+private fun HomeChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(10.dp)
+    Box(
+        modifier = Modifier
+            .height(32.dp)
+            .clip(shape)
+            .background(if (selected) Ink else Color.White)
+            .border(1.5.dp, if (selected) Ink else Sand, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text, style = GomType.bodyS.copy(color = if (selected) Cream else Ink, fontWeight = androidx.compose.ui.text.font.FontWeight.Medium))
+    }
+}
+
+@Composable
+private fun PlaceCard(
+    index: Int,
+    place: Place,
+    selected: Boolean,
+    isFavorite: Boolean,
+    note: String?,
+    onClick: () -> Unit,
+    onToggleFavorite: () -> Unit,
 ) {
-    val lifecycleOwner = LocalLifecycleOwner.current
-    var mapView by remember { mutableStateOf<MapView?>(null) }
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        modifier = Modifier
+            .width(CardWidth)
+            .shadow(6.dp, shape, ambientColor = Ink.copy(alpha = 0.3f), spotColor = Ink.copy(alpha = 0.3f))
+            .clip(shape)
+            .background(Color.White)
+            .border(1.5.dp, if (selected) Paprika else Sand, shape)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Paprika),
+                contentAlignment = Alignment.Center,
+            ) { Text("$index", style = GomType.badge.copy(color = Color.White, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)) }
+            EllipsisText(place.name, GomType.titleM, modifier = Modifier.weight(1f))
+            Icon(
+                imageVector = if (isFavorite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                contentDescription = "즐겨찾기",
+                tint = if (isFavorite) Paprika else HeartOff,
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable(onClick = onToggleFavorite),
+            )
+        }
+        Text(place.metaLine(), style = GomType.meta)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Cream)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        ) {
+            EllipsisText(note ?: "아직 기록 없음", GomType.meta.copy(color = if (note == null) Mute2 else Ink))
+        }
+    }
+}
 
-    AndroidView(
-        modifier = modifier,
-        factory = { context ->
-            MapView(context).apply {
-                layoutParams = ViewGroup.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                    ViewGroup.LayoutParams.MATCH_PARENT,
-                )
-                mapView = this
-                start(
-                    object : MapLifeCycleCallback() {
-                        override fun onMapDestroy() {}
-                        override fun onMapError(error: Exception?) {}
-                    },
-                    object : KakaoMapReadyCallback() {
-                        override fun onMapReady(map: KakaoMap) {
-                            map.setOnLabelClickListener { _, _, label ->
-                                (label.tag as? String)?.let(onLabelClick)
-                                true
-                            }
-                            onMapReady(map)
-                        }
-
-                        override fun getPosition(): LatLng =
-                            LatLng.from(37.5662952, 126.9779451)
-
-                        override fun getZoomLevel(): Int = 16
-                    },
-                )
-            }
-        },
-    )
-
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_RESUME -> mapView?.resume()
-                Lifecycle.Event.ON_PAUSE -> mapView?.pause()
-                else -> {}
+@Composable
+private fun EmptyCard(radius: Int, onExpand: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Color.White)
+            .border(1.5.dp, Sand, shape)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Text("이 근처엔 아직 맛집이 없네요.\n반경을 늘려볼까요?", style = GomType.body)
+        if (radius < 2000) {
+            OutlinedCta(onClick = onExpand, height = 40.dp, radius = 12.dp) {
+                Text("반경 ${GeoUtils.radiusLabel(if (radius < 1000) 1000 else 2000)}로")
             }
         }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 }
 
-private fun updateLabels(
-    map: KakaoMap,
-    places: List<Place>,
-    centerLat: Double,
-    centerLng: Double,
-    hasLocation: Boolean,
-) {
-    val manager = map.labelManager ?: return
-    val layer = manager.layer ?: return
-    layer.removeAll()
-
-    val placeStyles = manager.addLabelStyles(
-        LabelStyles.from(LabelStyle.from(MarkerBitmaps.pin(MarkerBitmaps.MINT)))
-    )
-    places.forEach { place ->
-        layer.addLabel(
-            LabelOptions.from(LatLng.from(place.lat, place.lng))
-                .setStyles(placeStyles)
-                .setTag(place.id)
-        )
-    }
-
-    if (hasLocation) {
-        val meStyles = manager.addLabelStyles(
-            LabelStyles.from(LabelStyle.from(MarkerBitmaps.currentLocation()))
-        )
-        layer.addLabel(
-            LabelOptions.from(LatLng.from(centerLat, centerLng))
-                .setStyles(meStyles)
-                .setTag("me")
-        )
-    }
-}

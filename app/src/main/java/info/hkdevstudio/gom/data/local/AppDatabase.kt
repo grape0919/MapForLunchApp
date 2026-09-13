@@ -75,6 +75,12 @@ interface GomDao {
 
     @Query("DELETE FROM excluded WHERE id = :id")
     suspend fun include(id: String)
+
+    @Query("DELETE FROM excluded")
+    suspend fun clearExcluded()
+
+    @Query("SELECT * FROM visits WHERE visitId = :visitId")
+    suspend fun visit(visitId: Long): VisitEntity?
 }
 
 @Database(
