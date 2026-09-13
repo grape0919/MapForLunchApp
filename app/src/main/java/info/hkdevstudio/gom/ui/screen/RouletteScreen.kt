@@ -154,7 +154,6 @@ fun RouletteScreen(
     val poolText = if (state.rouletteSource == RouletteSource.Favorites) "즐겨찾기 ${state.roulettePool.size}곳" else "후보 ${state.roulettePool.size}곳"
     val chipText = buildString {
         append(poolText)
-        if (state.roulettePool.size > wheel.size) append(" · 이번 판 ${wheel.size}")
         if (excludedLabel.isNotBlank()) append(" · $excludedLabel 빼고")
     }
 
@@ -213,7 +212,7 @@ fun RouletteScreen(
                 // 제목
                 Column(modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp)) {
                     val (head, accent, sub) = when (phase) {
-                        Phase.Idle -> Triple("오늘 점심, ", "돌려볼까요?", "돌림판의 가게를 눌러 이번 판에서 뺄 수 있어요")
+                        Phase.Idle -> Triple("오늘 점심, ", "돌려볼까요?", if (wheel.size > 12) "가게가 많아 돌림판엔 번호로 표시돼요 · 아래 칩을 눌러 빼기" else "아래 가게를 눌러 돌림판에서 뺄 수 있어요")
                         Phase.Spinning -> Triple("두구두구 ", "두구…", "김대리가 고민 중입니다")
                         is Phase.Result -> Triple("두구두구…\n", "오늘 점심은", null)
                     }
@@ -272,9 +271,10 @@ fun RouletteScreen(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Box(
-                                    modifier = Modifier.size(10.dp).clip(CircleShape)
+                                    modifier = Modifier.size(18.dp).clip(CircleShape)
                                         .background(RoulettePalette[i % RoulettePalette.size]),
-                                )
+                                    contentAlignment = Alignment.Center,
+                                ) { Text("${i + 1}", style = GomType.badge.copy(color = Color.White, fontSize = 10.sp)) }
                                 Text(place.name, style = GomType.bodyS.copy(color = Cream), maxLines = 1)
                                 Icon(Icons.Rounded.Block, contentDescription = "당분간 빼기", tint = Cream.copy(alpha = 0.5f), modifier = Modifier.size(14.dp))
                             }
@@ -439,7 +439,10 @@ private fun ResultCard(
     }
 }
 
-/** 룰렛 휠: conic 섹터 + 8dp Ink2 외곽 링 + 72dp Cream 허브("밥"은 회전하지 않음). */
+/**
+ * 룰렛 휠: conic 섹터 + 8dp Ink2 외곽 링 + 72dp Cream 허브("밥"은 회전하지 않음).
+ * 라벨: ≤12곳 이름(8자) / ≤20곳 4자 / 그 이상 번호(칩 번호와 대응).
+ */
 @Composable
 fun RouletteWheel(
     names: List<String>,
@@ -447,10 +450,16 @@ fun RouletteWheel(
     modifier: Modifier = Modifier,
 ) {
     val density = LocalDensity.current
-    val labelPaint = remember(density) {
+    val labelSp = when {
+        names.size <= 12 -> 13
+        names.size <= 20 -> 12
+        names.size <= 32 -> 11
+        else -> 9
+    }
+    val labelPaint = remember(density, labelSp) {
         android.graphics.Paint().apply {
             color = android.graphics.Color.WHITE
-            textSize = with(density) { 13.sp.toPx() }
+            textSize = with(density) { labelSp.sp.toPx() }
             textAlign = android.graphics.Paint.Align.CENTER
             isAntiAlias = true
             isFakeBoldText = true
@@ -479,12 +488,27 @@ fun RouletteWheel(
                         topLeft = Offset(size.center.x - inner, size.center.y - inner),
                         size = androidx.compose.ui.geometry.Size(inner * 2, inner * 2),
                     )
+                    if (names.size > 8) {
+                        rotate(index * sector, pivot = size.center) {
+                            drawLine(
+                                Ink2.copy(alpha = 0.5f),
+                                Offset(size.center.x, size.center.y - inner),
+                                size.center,
+                                strokeWidth = 1.dp.toPx(),
+                            )
+                        }
+                    }
+                    val label = when {
+                        names.size <= 12 -> if (name.length > 8) name.take(7) + "…" else name
+                        names.size <= 20 -> name.take(4)
+                        else -> "${index + 1}"
+                    }
                     val textAngle = index * sector + sector / 2f
                     rotate(textAngle, pivot = size.center) {
                         drawContext.canvas.nativeCanvas.drawText(
-                            if (name.length > 8) name.take(7) + "…" else name,
+                            label,
                             size.center.x,
-                            size.center.y - inner * 0.66f,
+                            size.center.y - inner * (if (names.size <= 20) 0.66f else 0.84f),
                             labelPaint,
                         )
                     }

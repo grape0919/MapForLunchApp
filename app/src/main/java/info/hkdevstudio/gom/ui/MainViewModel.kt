@@ -43,7 +43,7 @@ data class MapUiState(
     val selectedPlaceId: String? = null,
     /** 룰렛 전체 후보(필터 통과한 모든 곳) */
     val roulettePool: List<Place> = emptyList(),
-    /** 이번 판 돌림판에 올라간 곳(≤ 8, pool에서 무작위) */
+    /** 돌림판에 올라간 곳 = 후보 전체(순서만 무작위) */
     val rouletteWheel: List<Place> = emptyList(),
     val rouletteSource: RouletteSource = RouletteSource.Nearby,
 ) {
@@ -233,7 +233,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ---------- 룰렛 ----------
 
-    /** 전체 후보를 확정하고 돌림판에 올릴 8곳을 무작위로 뽑는다. 성공 시 true. */
+    /** 전체 후보를 확정하고 돌림판에 전부 올린다. 성공 시 true. */
     fun startRoulette(source: RouletteSource = RouletteSource.Nearby): Boolean {
         val pool = when (source) {
             RouletteSource.Nearby -> _state.value.eligiblePlaces
@@ -244,14 +244,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             return false
         }
         _state.update {
-            it.copy(roulettePool = pool, rouletteWheel = pool.shuffled().take(WHEEL_SIZE), rouletteSource = source)
+            it.copy(roulettePool = pool, rouletteWheel = pool.shuffled(), rouletteSource = source)
         }
         return true
     }
 
-    /** "다시": 같은 후보군에서 돌림판 8곳을 다시 뽑는다. */
+    /** "다시": 돌림판 순서를 다시 섞는다. */
     fun reshuffleWheel() {
-        _state.update { it.copy(rouletteWheel = it.roulettePool.shuffled().take(WHEEL_SIZE)) }
+        _state.update { it.copy(rouletteWheel = it.roulettePool.shuffled()) }
     }
 
     /** 후보 조정(제외/반경)이 바뀐 뒤 후보군과 돌림판을 다시 계산. */
@@ -261,10 +261,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 RouletteSource.Nearby -> s.eligiblePlaces
                 RouletteSource.Favorites -> favorites.value.map { it.toPlace() }.filter { it.id !in s.excludedPlaceIds }
             }
-            // 이미 돌림판에 있던 곳은 유지하고 빠진 곳만 채운다
+            // 기존 순서는 유지하고, 빠진 곳은 제거·새로 들어온 곳은 뒤에 추가
             val kept = s.rouletteWheel.filter { w -> pool.any { it.id == w.id } }
-            val fill = pool.filter { p -> kept.none { it.id == p.id } }.shuffled().take(WHEEL_SIZE - kept.size)
-            s.copy(roulettePool = pool, rouletteWheel = kept + fill)
+            val added = pool.filter { p -> kept.none { it.id == p.id } }.shuffled()
+            s.copy(roulettePool = pool, rouletteWheel = kept + added)
         }
     }
 
@@ -342,7 +342,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     companion object {
-        const val WHEEL_SIZE = 8
         const val MAX_NOTE_LENGTH = 40
     }
 }
