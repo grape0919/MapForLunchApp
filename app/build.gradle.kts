@@ -16,11 +16,11 @@ val localProps = Properties().apply {
 fun secret(name: String): String = localProps.getProperty(name) ?: ""
 
 android {
-    namespace = "info.hkdevstudio.gom"
+    namespace = "kr.ai.redbridgedev.bobmap"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "info.hkdevstudio.gom"
+        applicationId = "kr.ai.redbridgedev.bobmap"
         minSdk = 26
         targetSdk = 35
         versionCode = 11

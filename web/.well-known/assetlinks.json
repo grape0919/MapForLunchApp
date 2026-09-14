@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "info.hkdevstudio.gom",
+      "package_name": "kr.ai.redbridgedev.bobmap",
       "sha256_cert_fingerprints": [
         "REPLACE_WITH_RELEASE_SIGNING_CERT_SHA256",
         "REPLACE_WITH_DEBUG_CERT_SHA256"

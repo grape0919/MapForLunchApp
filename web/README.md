@@ -1,6 +1,6 @@
-# redbridgedev.ai.kr 공유 링크 호스팅
+# bobmap-link.redbridgedev.ai.kr 공유 링크 호스팅
 
-공유 링크 형식: `https://redbridgedev.ai.kr/place/{카카오 place id}?n=이름&c=카테고리&a=주소&lat=..&lng=..`
+공유 링크 형식: `https://bobmap-link.redbridgedev.ai.kr/place/{카카오 place id}?n=이름&c=카테고리&a=주소&lat=..&lng=..`
 
 - 앱이 설치된 기기: Android 앱 링크가 가로채 매장 상세로 바로 이동
 - 앱이 없는 기기: 이 폴더의 `place/index.html`이 뜨고 "앱에서 열기"(스토어 폴백) / "카카오맵에서 보기" / "Google Play에서 설치" 제공
@@ -9,8 +9,8 @@
 
 | 경로 | 파일 |
 |---|---|
-| `https://redbridgedev.ai.kr/.well-known/assetlinks.json` | `.well-known/assetlinks.json` |
-| `https://redbridgedev.ai.kr/place/*` | `place/index.html` (모든 `/place/…` 경로를 이 파일로 rewrite) |
+| `https://bobmap-link.redbridgedev.ai.kr/.well-known/assetlinks.json` | `.well-known/assetlinks.json` |
+| `https://bobmap-link.redbridgedev.ai.kr/place/*` | `place/index.html` (모든 `/place/…` 경로를 이 파일로 rewrite) |
 
 정적 호스팅(Cloudflare Pages, GitHub Pages, Netlify 등) 어디든 됩니다. `/place/*` → `place/index.html` rewrite 규칙만 설정하세요.
 - Cloudflare Pages: `_redirects` 파일에 `/place/* /place/index.html 200`
@@ -34,9 +34,9 @@ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -sto
 ## 검증
 
 ```bash
-adb shell pm verify-app-links --re-verify info.hkdevstudio.gom
-adb shell pm get-app-links info.hkdevstudio.gom      # verified 여부 확인
-adb shell am start -a android.intent.action.VIEW -d "https://redbridgedev.ai.kr/place/26338954?n=테스트"
+adb shell pm verify-app-links --re-verify kr.ai.redbridgedev.bobmap
+adb shell pm get-app-links kr.ai.redbridgedev.bobmap      # verified 여부 확인
+adb shell am start -a android.intent.action.VIEW -d "https://bobmap-link.redbridgedev.ai.kr/place/26338954?n=테스트"
 ```
 
-검증 전에도 `gom://place/{id}` 커스텀 스킴은 동작합니다.
+검증 전에도 `bobmap://place/{id}` 커스텀 스킴은 동작합니다.
