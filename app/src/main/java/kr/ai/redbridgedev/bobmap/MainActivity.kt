@@ -132,7 +132,9 @@ fun GomApp() {
         composable(
             route = Routes.PLACE,
             arguments = listOf(
-                navArgument("placeId") { type = NavType.StringType },
+                // 쿼리형 딥링크(/place/?id=..)에는 경로 인자가 없으므로 선택 인자로 둔다.
+                // 필수로 두면 Navigation이 그래프 생성 시 "required arguments are missing"으로 앱을 종료시킨다.
+                navArgument("placeId") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("visitId") { type = NavType.LongType; defaultValue = -1L },
                 navArgument("n") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("c") { type = NavType.StringType; nullable = true; defaultValue = null },
