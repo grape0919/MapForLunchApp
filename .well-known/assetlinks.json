@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "kr.ai.redbridgedev.bobmap",
+      "sha256_cert_fingerprints": [
+        "2E:DF:7A:8E:84:DF:C4:34:52:73:9E:40:AD:7C:A2:D2:3D:40:5C:55:30:A1:A4:7F:68:93:62:ED:BE:DC:22:85"
+      ]
+    }
+  }
+]
