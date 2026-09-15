@@ -56,7 +56,7 @@ private object Routes {
     const val MAP = "map"
     const val ROULETTE = "roulette"
     const val RECORDS = "records"
-    const val PLACE = "place/{placeId}?visitId={visitId}&n={n}&c={c}&a={a}&lat={lat}&lng={lng}"
+    const val PLACE = "place/{placeId}?visitId={visitId}&n={n}&c={c}&a={a}&lat={lat}&lng={lng}&id={id}"
     fun place(placeId: String, visitId: Long? = null) = "place/$placeId?visitId=${visitId ?: -1L}"
     const val WEB = "web/{placeId}?title={title}"
     fun web(placeId: String, title: String) = "web/$placeId?title=${android.net.Uri.encode(title)}"
@@ -139,17 +139,24 @@ fun GomApp() {
                 navArgument("a") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("lat") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("lng") { type = NavType.StringType; nullable = true; defaultValue = null },
+                navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null },
             ),
             // 공유 링크: https://bobmap-link.redbridgedev.ai.kr/place/{id}?n=..  /  bobmap://place/{id}?n=..
             deepLinks = listOf(
+                // 공유 링크(현행): /place/?id=..&n=..
+                navDeepLink { uriPattern = "https://${ShareUtils.LINK_HOST}/place/?id={id}&n={n}&c={c}&a={a}&lat={lat}&lng={lng}" },
+                navDeepLink { uriPattern = "https://${ShareUtils.LINK_HOST}/place/?id={id}" },
+                // 경로형(호환): /place/{id}
                 navDeepLink { uriPattern = "https://${ShareUtils.LINK_HOST}/place/{placeId}?n={n}&c={c}&a={a}&lat={lat}&lng={lng}" },
                 navDeepLink { uriPattern = "https://${ShareUtils.LINK_HOST}/place/{placeId}" },
+                navDeepLink { uriPattern = "bobmap://place/?id={id}&n={n}&c={c}&a={a}&lat={lat}&lng={lng}" },
                 navDeepLink { uriPattern = "bobmap://place/{placeId}?n={n}&c={c}&a={a}&lat={lat}&lng={lng}" },
                 navDeepLink { uriPattern = "bobmap://place/{placeId}" },
             ),
         ) { entry ->
             val args = entry.arguments
-            val placeId = args?.getString("placeId").orEmpty()
+            // 쿼리형 링크(id=)가 오면 경로 세그먼트가 비어 있으므로 id 인자를 우선한다
+            val placeId = args?.getString("id")?.takeIf { it.isNotBlank() } ?: args?.getString("placeId").orEmpty()
             val visitId = args?.getLong("visitId")?.takeIf { it > 0 }
             val linkedName = args?.getString("n")
             if (!linkedName.isNullOrBlank()) {

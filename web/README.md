@@ -1,6 +1,7 @@
 # bobmap-link.redbridgedev.ai.kr 공유 링크 사이트
 
-공유 링크 형식: `https://bobmap-link.redbridgedev.ai.kr/place/{카카오 place id}?n=이름&c=카테고리&a=주소&lat=..&lng=..`
+공유 링크 형식: `https://bobmap-link.redbridgedev.ai.kr/place/?id={카카오 place id}&n=이름&c=카테고리&a=주소&lat=..&lng=..`
+(id를 쿼리로 두는 이유: GitHub Pages는 `/place/{id}`를 404 상태로 서빙해 카카오톡 링크 미리보기가 빠질 수 있음. 경로형도 404.html로 계속 동작)
 
 - 앱이 설치된 기기: Android 앱 링크가 가로채 매장 상세로 바로 이동
 - 앱이 없는 기기: `place/index.html` 랜딩이 뜨고 "앱에서 열기"(스토어 폴백) / "카카오맵에서 보기" / "Google Play에서 설치" 제공
@@ -63,7 +64,7 @@ keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -sto
 curl -s https://bobmap-link.redbridgedev.ai.kr/.well-known/assetlinks.json
 adb shell pm verify-app-links --re-verify kr.ai.redbridgedev.bobmap
 adb shell pm get-app-links kr.ai.redbridgedev.bobmap      # verified 여부 확인
-adb shell am start -a android.intent.action.VIEW -d "https://bobmap-link.redbridgedev.ai.kr/place/26338954?n=테스트"
+adb shell am start -a android.intent.action.VIEW -d "https://bobmap-link.redbridgedev.ai.kr/place/?id=26338954&n=테스트"
 ```
 
 검증 전에도 `bobmap://place/{id}` 커스텀 스킴은 동작합니다.

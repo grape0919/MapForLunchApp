@@ -24,11 +24,16 @@ object ShareUtils {
     const val LINK_HOST = "bobmap-link.redbridgedev.ai.kr"
     const val PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=kr.ai.redbridgedev.bobmap"
 
-    /** 매장 딥링크. 앱이 검색 결과 없이도 상세를 그릴 수 있도록 핵심 정보를 쿼리로 싣는다. */
+    /**
+     * 매장 딥링크. 앱이 검색 결과 없이도 상세를 그릴 수 있도록 핵심 정보를 쿼리로 싣는다.
+     * id를 경로가 아닌 쿼리로 두는 이유: GitHub Pages는 rewrite가 없어 /place/{id}는 404 상태로 떨어지고,
+     * 그러면 카카오톡 링크 미리보기(OG)가 생략된다. /place/?id=.. 는 200으로 응답한다.
+     */
     fun placeLink(place: Place): String =
         Uri.Builder()
             .scheme("https").authority(LINK_HOST)
-            .appendPath("place").appendPath(place.id)
+            .appendPath("place").appendPath("")
+            .appendQueryParameter("id", place.id)
             .appendQueryParameter("n", place.name)
             .appendQueryParameter("c", place.category)
             .appendQueryParameter("a", place.address)
